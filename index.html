@@ -24,12 +24,9 @@ const USER_ID = 'blthzr'; // your fixed user ID
 // Firebase save functions
 let fbSaveTimer = null;
 function fbSave(collection, key, data){
-  // Debounce saves to avoid hammering Firebase
-  clearTimeout(fbSaveTimer);
-  fbSaveTimer = setTimeout(()=>{
-    db.collection('users').doc(USER_ID).collection(collection).doc(key).set({data: JSON.stringify(data)})
-      .catch(e=>console.warn('Firebase save error:',e));
-  }, 1000);
+  db.collection('users').doc(USER_ID).collection(collection).doc(key)
+    .set({data: JSON.stringify(data)})
+    .catch(e=>console.warn('Firebase save error:',e));
 }
 
 function fbSaveImmediate(collection, key, data){
