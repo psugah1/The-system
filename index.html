@@ -3188,6 +3188,7 @@ async function initApp(){
   loadCfg();
   loadPlayerName();
   if(!S.newTopCat)S.newTopCat=S.cats[0];
+  S.currentDate = todayStr(); // always start on today
   getDay(S.currentDate);
   render();
 
@@ -3220,6 +3221,8 @@ async function initApp(){
       loadPlayerName();
     }
 
+    S.currentDate = todayStr(); // always snap to today on open
+    carryLockedQuests(getPrevDay(S.currentDate), S.currentDate);
     getDay(S.currentDate);
     render();
     fbLoaded = true; // NOW safe to save
