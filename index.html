@@ -303,7 +303,7 @@ body::after{
 .notif{position:fixed;top:0;left:0;right:0;z-index:250;pointer-events:none;opacity:0;transition:opacity .3s ease;background:transparent}
 .notif.show{opacity:1}
 .notif.hide{opacity:0}
-.notif-inner{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 0;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-shadow:0 0 10px var(--accent)}
+.notif-inner{display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 8px;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1.5px;color:var(--accent);text-shadow:0 0 10px var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── OVERVIEW GRID ── */
 .ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -362,9 +362,6 @@ body::after{
 .cp-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--dim);width:100%;margin-bottom:4px}
 
 
-.notif{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--panel);border:1px solid var(--accent);box-shadow:0 0 30px rgba(0,170,255,.3);padding:9px 16px;border-radius:4px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);z-index:250;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .4s ease;white-space:nowrap;pointer-events:none;opacity:0}
-.notif.show{transform:translateX(-50%) translateY(0);opacity:1}
-.notif.hide{transform:translateX(-50%) translateY(-80px);opacity:0}
 .lflash{position:fixed;inset:0;background:rgba(0,170,255,.06);pointer-events:none;opacity:0;z-index:100;transition:opacity .1s}
 .lflash.show{opacity:1}
 
@@ -459,8 +456,6 @@ body::after{
   <button class="nbtn" id="navU" onclick="undoAction()"><span class="ni">↩</span>UNDO</button>
   <button class="nbtn" id="navR" onclick="redoAction()"><span class="ni">↪</span>REDO</button>
   <button class="nbtn" id="navC" onclick="openCatModal()"><span class="ni">⚙</span>CATS</button>
-  <button class="nbtn" onclick="exportWithData()"><span class="ni">📤</span>EXPORT</button>
-  <button class="nbtn" onclick="copyData()"><span class="ni">📋</span>BACKUP</button>
 </div>
 
 <!-- CALENDAR MODAL -->
@@ -710,10 +705,9 @@ function renderStats(){
   Object.values(dayData).forEach(d=>{
     (d.quests||[]).forEach(q=>{
       if(q.completed) totalXP+=XP_MAP[q.pri||'normal']||10;
-      // count subtask XP
       (q.subtasks||[]).forEach(s=>{
-        if(s.completed) totalXP+=5;
-        (s.subtasks||[]).forEach(ss=>{if(ss.completed)totalXP+=5;});
+        if(s.done) totalXP+=SUBTASK_XP;
+        (s.subtasks||[]).forEach(ss=>{if(ss.done)totalXP+=SUBTASK_XP;});
       });
     });
   });
