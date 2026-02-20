@@ -307,6 +307,15 @@ body::after{
 }
 
 /* ── BOSS FIRE ANIMATION ── */
+.boss-wrap{
+  animation:bossWrapPulse 3s ease-in-out infinite;
+  border-radius:5px;
+}
+@keyframes bossWrapPulse{
+  0%,100%{box-shadow:0 0 10px 2px rgba(160,0,255,.25),0 -6px 16px 2px rgba(180,0,255,.2)}
+  50%{box-shadow:0 0 22px 6px rgba(190,0,255,.5),0 -12px 26px 4px rgba(210,50,255,.4),0 10px 20px 3px rgba(130,0,220,.3)}
+}
+
 .qi-row.pri-boss{
   position:relative;
   overflow:visible !important;
@@ -1144,9 +1153,10 @@ function buildQuestWrap(q,cat){
   const b=parseInt(catColor.slice(5,7),16);
   // For boss tasks, force purple theme overriding category colour
   if(q.pri==='boss'){
-    wrap.style.setProperty('--cat-border', 'rgba(160,0,255,0.7)');
-    wrap.style.setProperty('--cat-shadow', '0 0 16px rgba(160,0,255,0.35)');
-    wrap.style.setProperty('--cat-inner',  'rgba(80,0,180,0.1)');
+    wrap.style.setProperty('--cat-border', 'rgba(180,0,255,0.8)');
+    wrap.style.setProperty('--cat-shadow', '0 0 20px rgba(160,0,255,0.4)');
+    wrap.style.setProperty('--cat-inner',  'rgba(80,0,180,0.12)');
+    wrap.classList.add('boss-wrap');
   } else {
     wrap.style.setProperty('--cat-color', catColor);
     wrap.style.setProperty('--cat-border', `rgba(${r},${g},${b},0.35)`);
@@ -1393,8 +1403,9 @@ function updateBossSkull(){
   const _seenB=new Set();
   Object.values(dayData).forEach(d=>{
     (d.quests||[]).forEach(q=>{
-      if(q.pri==='boss'&&!q.completed&&!_seenB.has(String(q.id))){
-        _seenB.add(String(q.id));
+      const _bkey=String(q.originalId||q.id);
+      if(q.pri==='boss'&&!q.completed&&!_seenB.has(_bkey)){
+        _seenB.add(_bkey);
         totalBoss++;
       }
     });
@@ -1409,15 +1420,15 @@ function showBossRaids(){
   const existing=document.getElementById('bossModal');
   if(existing)existing.remove();
   const allBoss=[];
-  // Deduplicate by quest ID - only show each boss quest once (most recent date)
+  // Deduplicate by originalId (locked copies share same origin)
   const seenBoss=new Set();
-  const today=todayStr();
-  // Sort entries so today comes first
+  // Sort so today first
   const sortedEntries=Object.entries(dayData).sort(([a],[b])=>b.localeCompare(a));
   sortedEntries.forEach(([ds,d])=>{
     (d.quests||[]).forEach(q=>{
-      if(q.pri==='boss'&&!q.completed&&!seenBoss.has(String(q.id))){
-        seenBoss.add(String(q.id));
+      const key=String(q.originalId||q.id);
+      if(q.pri==='boss'&&!q.completed&&!seenBoss.has(key)){
+        seenBoss.add(key);
         allBoss.push({...q,_date:ds});
       }
     });
@@ -1521,6 +1532,7 @@ function carryLockedQuests(fromDate, toDate){
       const newQ={
         ...srcQ,
         id:uid(),
+        originalId:srcQ.originalId||String(srcQ.id), // track source for dedup
         completed:false,
         locked:true,
         subtasks:(srcQ.subtasks||[]).map(s=>({...s,id:uid(),done:false}))
