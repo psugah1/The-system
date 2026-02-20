@@ -374,6 +374,11 @@ body::after{
 .qbtn-dupe:active{background:rgba(0,212,255,.15)}
 .sub-dupe-btn{background:none;border:1px solid rgba(0,212,255,.2);color:var(--accent);width:22px;height:22px;border-radius:2px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .sub-dupe-btn:active{background:rgba(0,212,255,.15)}
+.sub-acts{display:flex;gap:2px;align-items:center;flex-shrink:0;position:relative}
+.sub-overflow{display:flex;gap:2px;align-items:center;position:absolute;right:24px;top:50%;transform:translateY(-50%);background:rgba(2,8,24,.97);border:1px solid rgba(0,180,255,.25);border-radius:3px;padding:2px 4px;z-index:50;opacity:0;pointer-events:none;transition:opacity .15s;white-space:nowrap}
+.sub-overflow.open{opacity:1;pointer-events:all}
+.sub-more-btn{background:none;border:1px solid rgba(0,180,255,.2);color:var(--dim);width:22px;height:22px;border-radius:2px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:1px}
+.sub-more-btn.open{border-color:rgba(0,180,255,.6);color:var(--accent)}
 .qbtn-del{border-color:rgba(255,51,85,.5);color:var(--danger);background:rgba(255,51,85,.08);font-size:13px;font-weight:700}
 .qbtn-del:active{background:rgba(255,51,85,.25)}
 .sub-del{background:none;border:1px solid rgba(255,51,85,.4);color:var(--danger);cursor:pointer;font-size:11px;padding:2px 5px;border-radius:2px;transition:all .15s;font-weight:700}
@@ -471,6 +476,8 @@ body::after{
 .cl-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2)}
 .cl-swatch{width:12px;height:12px;border-radius:50%;flex-shrink:0}
 .cl-name{flex:1;font-size:15px;font-weight:600}
+.cl-name-inp{flex:1;font-size:14px;font-weight:600;background:transparent;border:none;border-bottom:1px solid rgba(0,180,255,.3);outline:none;padding:2px 0;color:var(--text);width:100%;min-width:0}
+.cl-name-inp:focus{border-bottom-color:var(--accent);color:var(--accent)}
 .cl-rem{background:none;border:1px solid rgba(255,51,85,.3);color:var(--danger);width:28px;height:28px;border-radius:3px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
 .nc-row{display:flex;gap:7px;margin-top:12px}
 .nc-inp{flex:1;background:rgba(0,170,255,.05);border:1px solid rgba(0,170,255,.2);border-radius:3px;padding:10px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:600;outline:none;caret-color:var(--accent)}
@@ -1431,6 +1438,19 @@ function showBossRaids(){
   document.body.appendChild(mo);
 }
 
+function toggleSubMenu(menuId, btn){
+  document.querySelectorAll('.sub-overflow.open').forEach(el=>{
+    if(el.id!==menuId){el.classList.remove('open');}
+  });
+  document.querySelectorAll('.sub-more-btn.open').forEach(el=>{
+    if(el!==btn)el.classList.remove('open');
+  });
+  const menu=document.getElementById(menuId);
+  if(!menu)return;
+  menu.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
 function toggleQActsMenu(qid, btn){
   // Close any other open menus first
   document.querySelectorAll('.qacts-overflow.open').forEach(el=>{
@@ -1866,14 +1886,20 @@ function buildSubItemRow(s, opts){
     const dupeBtn=opts.depth===1
       ?`<button class="sub-dupe-btn" onclick="dupeSub1('${opts.qid}','${opts.priSid}')" title="Duplicate">⧉</button>`
       :`<button class="sub-dupe-btn" onclick="dupeSub2('${opts.qid}','${opts.priSid}','${opts.priXid}')" title="Duplicate">⧉</button>`;
+    const subMenuId=`so-${opts.qid}-${s.id}`;
     row.innerHTML=`
       <div class="sub-dh" title="Drag to reorder, or drop on task/subtask to nest">⋮⋮</div>
       <div class="sub-chk" onclick="${opts.onToggle}">${s.done?'✓':''}</div>
       <div class="sub-txt">${esc(s.text)}${priLabel}</div>
-      <button class="sub-edit-btn" onclick="${opts.onEdit}">✏</button>
-      ${ssToggleBtn}
-      ${dupeBtn}
-      <button class="sub-del" onclick="${opts.onDel}">✕</button>
+      <div class="sub-acts">
+        <div class="sub-overflow" id="${subMenuId}">
+          <button class="sub-edit-btn" onclick="${opts.onEdit}">✏</button>
+          ${ssToggleBtn}
+          ${dupeBtn}
+          <button class="sub-del" onclick="${opts.onDel}">✕</button>
+        </div>
+        <button class="sub-more-btn" onclick="toggleSubMenu('${subMenuId}',this)">•••</button>
+      </div>
     `;
   }
   return row;
@@ -2704,7 +2730,7 @@ function renderCatModal(){
     const color=S.catColors[cat]||'#00d4ff';
     const row=document.createElement('div');
     row.className='cl-item';
-    row.innerHTML=`<div class="cl-swatch" style="background:${color}"></div><div class="cl-name">${cat}</div><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
+    row.innerHTML=`<div class="cl-swatch" style="background:${color}" onclick="pickCatColor('${esc(cat)}')"></div><input class="cl-name-inp" value="${cat}" data-orig="${cat}" onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
     list.appendChild(row);
   });
   const cp=document.getElementById('cpRow');
@@ -2717,6 +2743,30 @@ function renderCatModal(){
     cp.appendChild(sw);
   });
 }
+function renameCat(inp){
+  const orig=inp.dataset.orig;
+  const newName=inp.value.trim().toUpperCase();
+  if(!newName||newName===orig)return;
+  if(S.cats.includes(newName)){showNotif('NAME ALREADY EXISTS');inp.value=orig;return;}
+  pushUndo();
+  // Rename in cats array
+  const idx=S.cats.indexOf(orig);
+  if(idx===-1)return;
+  S.cats[idx]=newName;
+  // Rename catColors
+  S.catColors[newName]=S.catColors[orig];
+  delete S.catColors[orig];
+  // Rename all quests across all days
+  Object.values(dayData).forEach(d=>{
+    (d.quests||[]).forEach(q=>{if(q.cat===orig)q.cat=newName;});
+  });
+  // Update S references
+  if(S.tab===orig)S.tab=newName;
+  if(S.newTopCat===orig)S.newTopCat=newName;
+  inp.dataset.orig=newName;
+  saveAll();render();showNotif('CATEGORY RENAMED');
+}
+
 function addCat(){
   pushUndo();
   const inp=document.getElementById('ncInp');
