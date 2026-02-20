@@ -359,8 +359,9 @@ body::after{
 .cp-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--dim);width:100%;margin-bottom:4px}
 
 
-.notif{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--panel);border:1px solid var(--accent);box-shadow:0 0 30px rgba(0,170,255,.3);padding:9px 16px;border-radius:4px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);z-index:250;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;pointer-events:none}
-.notif.show{transform:translateX(-50%) translateY(0)}
+.notif{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--panel);border:1px solid var(--accent);box-shadow:0 0 30px rgba(0,170,255,.3);padding:9px 16px;border-radius:4px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);z-index:250;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .4s ease;white-space:nowrap;pointer-events:none;opacity:0}
+.notif.show{transform:translateX(-50%) translateY(0);opacity:1}
+.notif.hide{transform:translateX(-50%) translateY(-80px);opacity:0}
 .lflash{position:fixed;inset:0;background:rgba(0,170,255,.06);pointer-events:none;opacity:0;z-index:100;transition:opacity .1s}
 .lflash.show{opacity:1}
 
@@ -2285,7 +2286,18 @@ function showCompleteOverlay(sub){
 
 // ─── UTILS ───
 function doFlash(){const e=document.getElementById('lflash');e.classList.add('show');setTimeout(()=>e.classList.remove('show'),100)}
-function showNotif(msg){const e=document.getElementById('notif');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2000)}
+let notifTimer = null;
+function showNotif(msg){
+  const e=document.getElementById('notif');
+  e.textContent=msg;
+  e.classList.remove('hide');
+  e.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer=setTimeout(()=>{
+    e.classList.add('hide');
+    setTimeout(()=>{e.classList.remove('show','hide');},400);
+  },2000);
+}
 
 // ─── PLAYER NAME ───
 function loadPlayerName(){
