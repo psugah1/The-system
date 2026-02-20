@@ -357,7 +357,11 @@ body::after{
 .qedit{width:100%;background:transparent;border:none;border-bottom:1px solid var(--accent);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:600;outline:none;caret-color:var(--accent);padding:2px 0}
 
 /* actions */
-.qacts{display:flex;gap:3px;align-items:center;padding-right:8px;flex-shrink:0}
+.qacts{display:flex;gap:3px;align-items:center;padding-right:8px;flex-shrink:0;position:relative}
+.qacts-overflow{display:flex;gap:3px;align-items:center;position:absolute;right:30px;top:50%;transform:translateY(-50%);background:rgba(2,8,24,.97);border:1px solid rgba(0,180,255,.25);border-radius:4px;padding:3px 5px;z-index:50;opacity:0;pointer-events:none;transition:opacity .15s;white-space:nowrap}
+.qacts-overflow.open{opacity:1;pointer-events:all}
+.qbtn-more{border-color:rgba(0,180,255,.25);color:var(--mid);letter-spacing:1px;font-size:10px;width:26px}
+.qbtn-more:active,.qbtn-more.open{border-color:rgba(0,180,255,.6);color:var(--accent);background:rgba(0,180,255,.1)}
 .qbtn{width:26px;height:26px;border-radius:3px;border:1px solid transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:transparent;transition:all .2s}
 .qbtn-edit{border-color:rgba(0,170,255,.25);color:var(--blue)}
 .qbtn-edit:active{background:rgba(0,170,255,.2)}
@@ -1172,18 +1176,23 @@ function buildQuestRow(q){
 
   innerHtml+=`<div class="qacts">`;
   if(S.editing===String(q.id)){
+    // Edit mode - show save + priority buttons inline
     innerHtml+=`<button class="qbtn qbtn-save" onclick="saveEdit('${q.id}')">✓</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='normal'?'sel-n':''}" onclick="setQuestPri('${q.id}','normal')">N</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='hard'?'sel-h':''}" onclick="setQuestPri('${q.id}','hard')">H</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='urgent'?'sel-u':''}" onclick="setQuestPri('${q.id}','urgent')">U</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='boss'?'sel-b':''}" onclick="setQuestPri('${q.id}','boss')">💀</button>`;
-  } else if(!q.completed){
-    innerHtml+=`<button class="qbtn qbtn-edit" onclick="startEdit('${q.id}')">✏</button>`;
+  } else {
+    // Collapsed: show lock (always visible as key action), then ... menu
+    innerHtml+=`<div class="qacts-overflow" id="qo-${q.id}">`;
+    if(!q.completed) innerHtml+=`<button class="qbtn qbtn-edit" onclick="startEdit('${q.id}')">✏</button>`;
+    innerHtml+=`<button class="qbtn qbtn-sub" onclick="toggleSub('${q.id}')" title="Add subtask">+</button>`;
+    innerHtml+=`<button class="qbtn qbtn-dupe" onclick="dupeQ('${q.id}')" title="Duplicate">⧉</button>`;
+    innerHtml+=`<button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>`;
+    innerHtml+=`</div>`;
+    innerHtml+=`<button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>`;
+    innerHtml+=`<button class="qbtn qbtn-more" onclick="toggleQActsMenu('${q.id}',this)">•••</button>`;
   }
-  innerHtml+=`<button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked - tap to lock'}">${q.locked?'🔒':'🔓'}</button>`;
-  innerHtml+=`<button class="qbtn qbtn-sub" onclick="toggleSub('${q.id}')" title="Subtasks">+</button>`;
-  innerHtml+=`<button class="qbtn qbtn-dupe" onclick="dupeQ('${q.id}')" title="Duplicate">⧉</button>`;
-  innerHtml+=`<button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>`;
   innerHtml+=`</div>`;
 
   div.innerHTML=innerHtml;
@@ -1421,6 +1430,28 @@ function showBossRaids(){
   mo.innerHTML=html;
   document.body.appendChild(mo);
 }
+
+function toggleQActsMenu(qid, btn){
+  // Close any other open menus first
+  document.querySelectorAll('.qacts-overflow.open').forEach(el=>{
+    if(el.id!=='qo-'+qid){el.classList.remove('open');}
+  });
+  document.querySelectorAll('.qbtn-more.open').forEach(el=>{
+    if(el!==btn)el.classList.remove('open');
+  });
+  const menu=document.getElementById('qo-'+qid);
+  if(!menu)return;
+  const isOpen=menu.classList.contains('open');
+  menu.classList.toggle('open',!isOpen);
+  btn.classList.toggle('open',!isOpen);
+}
+// Close menus when clicking elsewhere
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.qacts')){
+    document.querySelectorAll('.qacts-overflow.open').forEach(el=>el.classList.remove('open'));
+    document.querySelectorAll('.qbtn-more.open').forEach(el=>el.classList.remove('open'));
+  }
+},{passive:true});
 
 function goToday(){
   S.currentDate = todayStr();
