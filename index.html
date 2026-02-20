@@ -257,7 +257,7 @@ body::after{
 .cat-xp-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ffaa00);border-radius:2px;transition:width .5s ease}
 
 /* ── QUEST ITEM ── */
-.q-wrap{margin-bottom:6px}
+.q-wrap{margin-bottom:6px;position:relative;border-radius:5px;}
 .qi-row{display:flex;align-items:stretch;gap:0;background:rgba(4,10,22,.95);border:1px solid var(--cat-border, rgba(0,180,255,.3));border-radius:4px;position:relative;overflow:visible;transition:border-color .3s,box-shadow .3s;min-height:46px;box-shadow:var(--cat-shadow, 0 0 10px rgba(0,150,255,.1)),inset 0 0 20px var(--cat-inner, rgba(0,100,200,.04))}
 
 /* priority visuals */
@@ -282,10 +282,10 @@ body::after{
   0%,100%{box-shadow:none;opacity:1}
 /* ── URGENT SUBTASK GLOW ── */
 .sub-item.sub-urgent{
-  position:relative;
   border-color:rgba(255,51,85,.6) !important;
-  background:rgba(255,51,85,.06) !important;
+  background:rgba(255,51,85,.07) !important;
   animation:subUrgentPulse 2s ease-in-out infinite !important;
+  overflow:visible;
 }
 .sub-item.sub-urgent::before{
   content:'';
@@ -309,52 +309,48 @@ body::after{
 /* ── BOSS ROTATING BORDER ── */
 .boss-wrap{
   position:relative;
-  border-radius:5px;
-  padding:1px; /* space for the rotating border */
-  background:transparent;
+  border-radius:6px;
   z-index:0;
+  overflow:hidden;
 }
-/* Rotating conic-gradient border via pseudo-element on the wrap */
 .boss-wrap::before{
   content:'';
   position:absolute;
-  inset:-2px;
-  border-radius:6px;
+  inset:-50%;
   background:conic-gradient(
     from 0deg,
-    transparent 0deg,
-    #6600cc 60deg,
-    #c040ff 120deg,
-    #ff66ff 180deg,
-    #c040ff 240deg,
-    #6600cc 300deg,
-    transparent 360deg
+    transparent,
+    #6600cc,
+    #c040ff,
+    #ff88ff,
+    #c040ff,
+    #6600cc,
+    transparent
   );
   animation:bossRotate 3s linear infinite;
-  z-index:-1;
+  z-index:0;
 }
 .boss-wrap::after{
   content:'';
   position:absolute;
-  inset:1px;
+  inset:2px;
   border-radius:4px;
-  background:rgba(4,10,22,.98);
-  z-index:-1;
-}
-@keyframes bossRotate{
-  0%  {transform:rotate(0deg);  filter:brightness(1)}
-  50% {filter:brightness(1.4)}
-  100%{transform:rotate(360deg);filter:brightness(1)}
-}
-.qi-row.pri-boss{
-  position:relative;
-  overflow:visible !important;
-  border:none !important;
-  background:rgba(40,0,90,.2) !important;
-  transition:none !important;
+  background:rgba(4,8,20,.97);
   z-index:1;
 }
-.qi-row.pri-boss::before{
+@keyframes bossRotate{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+/* qi-row sits above the pseudo-elements */
+.boss-wrap .qi-row{
+  position:relative;
+  z-index:2;
+  background:rgba(40,0,90,.15) !important;
+  border:none !important;
+  transition:none !important;
+}
+.boss-wrap .qi-row::before{
   background:linear-gradient(180deg,#c040ff,#8800cc) !important;
   box-shadow:0 0 10px #c040ff !important;
 }
@@ -461,7 +457,7 @@ body::after{
 .subsub-add{margin-left:0}
 .sub-dh{cursor:grab;color:var(--dim);font-size:13px;padding:0 4px;letter-spacing:-2px;user-select:none;flex-shrink:0}
 .sub-dh:active{cursor:grabbing;color:var(--accent)}
-.sub-item{display:flex;align-items:center;gap:7px;padding:6px 8px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s}
+.sub-item{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 12px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s;position:relative;}
 .sub-item.done{opacity:.4}
 .sub-chk{width:16px;height:16px;border:1.5px solid var(--dim);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;font-size:9px;font-weight:900;color:var(--bg)}
 .sub-item.done .sub-chk{background:var(--green);border-color:var(--green)}
