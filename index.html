@@ -838,6 +838,7 @@ function rebuildTabs(){
     btn.onclick=()=>{
       S.tab=cat;
       if(cat!=='ALL') S.newTopCat=cat;
+      else S.newTopCat=S.cats[0]||'DAILY';
       rebuildTabs();
       renderMain();
     };
@@ -910,29 +911,12 @@ function buildTopOpts(){
   if(!opts)return;
   opts.innerHTML='';
 
-  // ── CATEGORY ROW ──
-  const catRow=document.createElement('div');
-  catRow.className='opts-row';
-  const catLabel=document.createElement('span');
-  catLabel.className='opts-label';
-  catLabel.textContent='CAT';
-  catRow.appendChild(catLabel);
-  S.cats.forEach(cat=>{
-    const color=S.catColors[cat]||'#00d4ff';
-    const sel=S.newTopCat===cat;
-    const btn=document.createElement('button');
-    btn.className='obtn';
-    if(sel){btn.style.borderColor=color;btn.style.color=color;btn.style.background=color+'28';btn.style.fontWeight='700';}
-    btn.textContent=cat;
-    btn.onclick=()=>{S.newTopCat=cat;buildTopOpts();};
-    catRow.appendChild(btn);
-  });
-  opts.appendChild(catRow);
-
-  // ── DIVIDER ──
-  const div=document.createElement('hr');
-  div.className='opts-divider';
-  opts.appendChild(div);
+  // ── CURRENT CATEGORY INDICATOR ──
+  const catIndicator=document.createElement('div');
+  catIndicator.style.cssText='font-family:Orbitron,monospace;font-size:7px;letter-spacing:2px;color:rgba(0,200,255,.5);margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(0,180,255,.1)';
+  const catColor=S.catColors[S.newTopCat]||'#00d4ff';
+  catIndicator.innerHTML=`ADDING TO: <span style="color:${catColor};font-weight:700;text-shadow:0 0 8px ${catColor}">${S.newTopCat}</span>`;
+  opts.appendChild(catIndicator);
 
   // ── PRIORITY ROW ──
   const priRow=document.createElement('div');
@@ -1071,7 +1055,10 @@ function buildQuestWrap(q,cat){
   // NOW the row is inside wrap, so closest('.q-wrap') will work
   setupDragHandle(row,q);
 
-  if(S.subShowing[q.id]){
+  // Always show subtasks if they exist
+  if((q.subtasks||[]).length > 0){
+    wrap.appendChild(buildSubWrap(q));
+  } else if(S.subShowing[q.id]){
     wrap.appendChild(buildSubWrap(q));
   }
 
@@ -1413,7 +1400,7 @@ function toggleQ(id){
   }
 
   // Rebuild subtask panel in-place if it's open (to show ticked state)
-  if(S.subShowing[id]) rebuildSubWrap(id);
+  rebuildSubWrap(id); // always rebuild/show subtasks
 
   renderStats();
   updateCatXPBar(q.cat);
@@ -1734,19 +1721,16 @@ function toggleChecklist(qid,sid){
 }
 
 function toggleSub(qid){
-  S.subShowing[qid]=!S.subShowing[qid];
+  // Always show - just ensure sub-wrap exists when + is clicked
+  S.subShowing[qid]=true;
   saveUI();
   const qwrap=document.querySelector(`.q-wrap[data-id="${qid}"]`);
   if(!qwrap)return;
   const existing=qwrap.querySelector('.sub-wrap');
-  if(S.subShowing[qid]){
-    if(!existing){
-      const day=getDay(S.currentDate);
-      const q=day.quests.find(q=>String(q.id)===String(qid));
-      if(q)qwrap.appendChild(buildSubWrap(q));
-    }
-  } else {
-    if(existing)existing.remove();
+  if(!existing){
+    const day=getDay(S.currentDate);
+    const q=day.quests.find(q=>String(q.id)===String(qid));
+    if(q)qwrap.appendChild(buildSubWrap(q));
   }
 }
 
