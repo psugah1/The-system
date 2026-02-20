@@ -5,6 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SYSTEM // QUEST LOG v4</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBoS2-dpbCx9BkHAQLDmskACAbWrMNRYoc",
+  authDomain: "the-system-c5d33.firebaseapp.com",
+  projectId: "the-system-c5d33",
+  storageBucket: "the-system-c5d33.firebasestorage.app",
+  messagingSenderId: "599823462747",
+  appId: "1:599823462747:web:52d470ed801b6b2c2d6a7e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const USER_ID = 'blthzr'; // your fixed user ID
+
+// Firebase save functions
+let fbSaveTimer = null;
+function fbSave(collection, key, data){
+  // Debounce saves to avoid hammering Firebase
+  clearTimeout(fbSaveTimer);
+  fbSaveTimer = setTimeout(()=>{
+    db.collection('users').doc(USER_ID).collection(collection).doc(key).set({data: JSON.stringify(data)})
+      .catch(e=>console.warn('Firebase save error:',e));
+  }, 1000);
+}
+
+function fbSaveImmediate(collection, key, data){
+  return db.collection('users').doc(USER_ID).collection(collection).doc(key).set({data: JSON.stringify(data)});
+}
+
+async function fbLoad(){
+  try {
+    const userRef = db.collection('users').doc(USER_ID);
+    const [daysDoc, cfgDoc, uiDoc, playerDoc] = await Promise.all([
+      userRef.collection('data').doc('days').get(),
+      userRef.collection('data').doc('cfg').get(),
+      userRef.collection('data').doc('ui').get(),
+      userRef.collection('data').doc('player').get(),
+    ]);
+    return {
+      days: daysDoc.exists ? JSON.parse(daysDoc.data().data) : null,
+      cfg:  cfgDoc.exists  ? JSON.parse(cfgDoc.data().data)  : null,
+      ui:   uiDoc.exists   ? JSON.parse(uiDoc.data().data)   : null,
+      player: playerDoc.exists ? playerDoc.data().data : null,
+    };
+  } catch(e){
+    console.warn('Firebase load error:',e);
+    return {days:null,cfg:null,ui:null,player:null};
+  }
+}
+</script>
 <style>
 :root{
   --bg:#010208;--panel:#040a14;--panel2:#060d1a;--border:#0e3060;--border2:#0a2040;
@@ -518,6 +570,8 @@ function undoAction(){
   S.catColors = snap.catColors;
   localStorage.setItem('sl3_days', JSON.stringify(dayData));
   localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  fbSave('data','days',dayData);
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
   const ubtn = document.getElementById('navU');
   if(ubtn) ubtn.classList.toggle('has-undo', undoStack.length > 0);
   const rbtn = document.getElementById('navR');
@@ -539,6 +593,8 @@ function redoAction(){
   S.catColors = snap.catColors;
   localStorage.setItem('sl3_days', JSON.stringify(dayData));
   localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  fbSave('data','days',dayData);
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
   const ubtn = document.getElementById('navU');
   if(ubtn) ubtn.classList.add('has-undo');
   const rbtn = document.getElementById('navR');
@@ -550,14 +606,14 @@ function redoAction(){
 function saveAll(){
   localStorage.setItem('sl3_days',JSON.stringify(dayData));
   localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  fbSave('data','days',dayData);
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
 }
 
 function saveUI(){
-  localStorage.setItem('sl3_ui',JSON.stringify({
-    subShowing:S.subShowing,
-    subCollapsed:S.subCollapsed,
-    ssShowing:S.ssShowing
-  }));
+  const ui={subShowing:S.subShowing,subCollapsed:S.subCollapsed,ssShowing:S.ssShowing};
+  localStorage.setItem('sl3_ui',JSON.stringify(ui));
+  fbSave('data','ui',ui);
 }
 
 function loadCfg(){
@@ -2257,6 +2313,7 @@ function savePlayerName(){
   span.style.display='inline-block';
   inp.style.display='none';
   localStorage.setItem('sl3_player',name);
+  fbSave('data','player',name);
 }
 
 // ─── ANIMATED BACKGROUND ───
@@ -2450,11 +2507,52 @@ function doExport(html,data){
   showNotif('EXPORTED ✓ CHECK DOWNLOADS');
 }
 
-loadCfg();
-loadPlayerName();
-if(!S.newTopCat)S.newTopCat=S.cats[0];
-getDay(S.currentDate);
-render();
+// ─── INIT WITH FIREBASE ───
+async function initApp(){
+  showNotif('CONNECTING TO THE SYSTEM...');
+
+  // First load from localStorage so app is immediately usable
+  loadCfg();
+  loadPlayerName();
+  if(!S.newTopCat)S.newTopCat=S.cats[0];
+  getDay(S.currentDate);
+  render();
+
+  // Then load from Firebase and override if data exists there
+  try {
+    const fb = await fbLoad();
+
+    if(fb.days){
+      dayData = fb.days;
+      // Sync to localStorage
+      localStorage.setItem('sl3_days', JSON.stringify(dayData));
+    }
+    if(fb.cfg){
+      if(fb.cfg.cats) S.cats = fb.cfg.cats;
+      if(fb.cfg.catColors) S.catColors = {...DEFAULT_COLORS,...fb.cfg.catColors};
+      localStorage.setItem('sl3_cfg', JSON.stringify(fb.cfg));
+    }
+    if(fb.ui){
+      if(fb.ui.subShowing) S.subShowing = fb.ui.subShowing;
+      if(fb.ui.subCollapsed) S.subCollapsed = fb.ui.subCollapsed;
+      if(fb.ui.ssShowing) S.ssShowing = fb.ui.ssShowing;
+      localStorage.setItem('sl3_ui', JSON.stringify(fb.ui));
+    }
+    if(fb.player){
+      localStorage.setItem('sl3_player', fb.player);
+      loadPlayerName();
+    }
+
+    getDay(S.currentDate);
+    render();
+    showNotif('SYSTEM ONLINE ✓');
+  } catch(e){
+    console.warn('Firebase init error:', e);
+    showNotif('OFFLINE MODE');
+  }
+}
+
+initApp();
 
 
 </script>
