@@ -257,7 +257,7 @@ body::after{
 .cat-xp-fill{height:100%;background:linear-gradient(90deg,var(--gold),#ffaa00);border-radius:2px;transition:width .5s ease}
 
 /* ── QUEST ITEM ── */
-.q-wrap{margin-bottom:6px;position:relative;border-radius:5px;}
+.q-wrap{margin-bottom:6px}
 .qi-row{display:flex;align-items:stretch;gap:0;background:rgba(4,10,22,.95);border:1px solid var(--cat-border, rgba(0,180,255,.3));border-radius:4px;position:relative;overflow:visible;transition:border-color .3s,box-shadow .3s;min-height:46px;box-shadow:var(--cat-shadow, 0 0 10px rgba(0,150,255,.1)),inset 0 0 20px var(--cat-inner, rgba(0,100,200,.04))}
 
 /* priority visuals */
@@ -280,6 +280,8 @@ body::after{
 }
 @keyframes urgentBarGlow{
   0%,100%{box-shadow:none;opacity:1}
+  50%{box-shadow:0 0 8px 2px rgba(255,51,85,.6);opacity:.8}
+}
 /* ── URGENT SUBTASK GLOW ── */
 .sub-item.sub-urgent{
   border-color:rgba(255,51,85,.6) !important;
@@ -300,6 +302,10 @@ body::after{
 
 /* ── BOSS TASK PULSE ── */
 @keyframes bossPurplePulse{
+  0%,100%{box-shadow:0 0 5px 1px rgba(150,0,255,.5)}
+  50%{box-shadow:0 0 18px 6px rgba(180,0,255,.9)}
+}
+@-webkit-keyframes bossPurplePulse{
   0%,100%{box-shadow:0 0 5px 1px rgba(150,0,255,.5)}
   50%{box-shadow:0 0 18px 6px rgba(180,0,255,.9)}
 }
@@ -384,7 +390,7 @@ body::after{
 .subsub-add{margin-left:0}
 .sub-dh{cursor:grab;color:var(--dim);font-size:13px;padding:0 4px;letter-spacing:-2px;user-select:none;flex-shrink:0}
 .sub-dh:active{cursor:grabbing;color:var(--accent)}
-.sub-item{display:flex;align-items:center;gap:7px;padding:6px 8px 6px 12px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s;position:relative;}
+.sub-item{display:flex;align-items:center;gap:7px;padding:6px 8px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s;position:relative}
 .sub-item.done{opacity:.4}
 .sub-chk{width:16px;height:16px;border:1.5px solid var(--dim);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;font-size:9px;font-weight:900;color:var(--bg)}
 .sub-item.done .sub-chk{background:var(--green);border-color:var(--green)}
@@ -1139,6 +1145,7 @@ function buildQuestRow(q){
   div.dataset.cat=q.cat;
   if(pri==='boss'&&!q.completed){
     div.style.animation='bossPurplePulse 2s ease-in-out infinite';
+    div.style.webkitAnimation='bossPurplePulse 2s ease-in-out infinite';
     div.style.borderColor='rgba(160,0,255,.7)';
     div.style.background='rgba(40,0,90,.15)';
   }
