@@ -306,25 +306,53 @@ body::after{
   50%{box-shadow:0 0 10px 2px rgba(255,51,85,.8);opacity:1}
 }
 
-/* ── BOSS FIRE ANIMATION ── */
+/* ── BOSS ROTATING BORDER ── */
 .boss-wrap{
+  position:relative;
   border-radius:5px;
-  animation:bossWrapPulse 3s ease-in-out infinite;
+  padding:1px; /* space for the rotating border */
+  background:transparent;
+  z-index:0;
 }
-@keyframes bossWrapPulse{
-  0%,100%{box-shadow:0 0 8px 2px rgba(160,0,255,.3)}
-  50%{box-shadow:0 0 24px 8px rgba(190,0,255,.65),0 0 40px 12px rgba(160,0,255,.25)}
+/* Rotating conic-gradient border via pseudo-element on the wrap */
+.boss-wrap::before{
+  content:'';
+  position:absolute;
+  inset:-2px;
+  border-radius:6px;
+  background:conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #6600cc 60deg,
+    #c040ff 120deg,
+    #ff66ff 180deg,
+    #c040ff 240deg,
+    #6600cc 300deg,
+    transparent 360deg
+  );
+  animation:bossRotate 3s linear infinite;
+  z-index:-1;
+}
+.boss-wrap::after{
+  content:'';
+  position:absolute;
+  inset:1px;
+  border-radius:4px;
+  background:rgba(4,10,22,.98);
+  z-index:-1;
+}
+@keyframes bossRotate{
+  0%  {transform:rotate(0deg);  filter:brightness(1)}
+  50% {filter:brightness(1.4)}
+  100%{transform:rotate(360deg);filter:brightness(1)}
 }
 .qi-row.pri-boss{
   position:relative;
   overflow:visible !important;
-  border-color:rgba(180,0,255,.8) !important;
-  background:rgba(60,0,120,.15) !important;
-  animation:bossBorderPulse 3s ease-in-out infinite !important;
-}
-@keyframes bossBorderPulse{
-  0%,100%{border-color:rgba(160,0,255,.5) !important;box-shadow:inset 0 0 12px rgba(120,0,200,.1)}
-  50%{border-color:rgba(210,60,255,1) !important;box-shadow:inset 0 0 24px rgba(160,0,220,.2)}
+  border:none !important;
+  background:rgba(40,0,90,.2) !important;
+  transition:none !important;
+  z-index:1;
 }
 .qi-row.pri-boss::before{
   background:linear-gradient(180deg,#c040ff,#8800cc) !important;
@@ -1678,6 +1706,19 @@ function toggleQ(id){
     s.done=q.completed;
     (s.subsubs||[]).forEach(x=>{ x.done=q.completed; });
   });
+
+  // If boss task ticked, sync completion to all locked copies across days
+  if(q.pri==='boss'){
+    const bossKey=(q.originalId)||(q.text+'|'+q.cat);
+    Object.values(dayData).forEach(d=>{
+      (d.quests||[]).forEach(dq=>{
+        const dqKey=(dq.originalId)||(dq.text+'|'+dq.cat);
+        if(dqKey===bossKey && String(dq.id)!==String(q.id)){
+          dq.completed=q.completed;
+        }
+      });
+    });
+  }
 
   saveAll();
 
