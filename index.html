@@ -84,9 +84,9 @@ body::after{
 
 /* ── HEADER ── */
 .hdr{position:relative;z-index:10;background:rgba(2,6,16,.97);border-bottom:1px solid rgba(0,210,255,.35);box-shadow:0 1px 20px rgba(0,180,255,.15);padding:13px 14px 0;flex-shrink:0}
-.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:4px;min-width:0}
 .logo{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;letter-spacing:2px;background:linear-gradient(135deg,#fff 0%,var(--accent) 50%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.logo-block{display:flex;flex-direction:column;gap:2px}
+.logo-block{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .logo-system{font-family:'Orbitron',monospace;font-size:15px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,#fff 0%,var(--accent) 50%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 6px rgba(0,229,255,.6))}
 .logo-player{display:flex;align-items:center;gap:5px}
 .player-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--mid)}
@@ -155,7 +155,7 @@ body::after{
 .notif-inner::before{content:'▶';color:rgba(0,220,255,.8);font-size:7px}
 
 .player-name-input{display:none;font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);background:transparent;border:none;border-bottom:1px solid var(--gold);outline:none;width:100px;padding-bottom:1px}
-.date-nav{display:flex;align-items:center;gap:8px}
+.date-nav{display:flex;align-items:center;gap:4px;flex-shrink:0}
 .dnbtn{background:none;border:1px solid var(--border);color:var(--mid);width:30px;height:30px;border-radius:3px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .dnbtn:active{border-color:var(--accent);color:var(--accent)}
 .ddisp{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;color:var(--accent);text-align:center;min-width:90px;cursor:pointer}
@@ -283,16 +283,7 @@ body::after{
   border-color:rgba(160,0,255,.6);
   animation:bossPulse 4s ease-in-out infinite;
 }
-.qi-row.pri-boss::after{
-  content:'';
-  position:absolute;
-  inset:-2px;
-  border-radius:5px;
-  background:transparent;
-  pointer-events:none;
-  animation:bossFireOuter 3s ease-in-out infinite;
-  z-index:0;
-}
+/* boss fire handled by box-shadow on main element */
 @keyframes bossFireOuter{
   0%,100%{box-shadow:0 0 8px 2px rgba(140,0,255,.25),0 0 20px 4px rgba(100,0,200,.15)}
   33%{box-shadow:0 0 14px 4px rgba(180,0,255,.4),0 0 28px 8px rgba(120,0,220,.2),0 -4px 12px 2px rgba(200,50,255,.3)}
@@ -329,8 +320,10 @@ body::after{
 .qi-row.pri-boss{border-color:rgba(160,0,255,.6);animation:bossPulse 4s ease-in-out infinite}
 .qi-row.pri-boss::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#c040ff;border-radius:3px 0 0 3px;box-shadow:0 0 8px #c040ff;animation:bossBarGlow 4s ease-in-out infinite}
 @keyframes bossPulse{
-  0%,100%{box-shadow:0 0 6px rgba(160,0,255,.15),inset 0 0 15px rgba(120,0,200,.04);border-color:rgba(160,0,255,.5)}
-  50%{box-shadow:0 0 18px 3px rgba(160,0,255,.35),inset 0 0 25px rgba(120,0,200,.08);border-color:rgba(200,50,255,.9)}
+  0%  {box-shadow:0 0 8px 2px rgba(160,0,255,.3),0 -6px 16px 2px rgba(180,0,255,.25),0 6px 14px 2px rgba(120,0,200,.2);border-color:rgba(160,0,255,.5)}
+  33% {box-shadow:0 0 16px 4px rgba(180,0,255,.5),0 -10px 22px 4px rgba(200,50,255,.4),0 4px 10px 1px rgba(140,0,220,.25);border-color:rgba(200,60,255,.9)}
+  66% {box-shadow:0 0 12px 2px rgba(140,0,240,.4),0 -4px 12px 2px rgba(160,0,255,.3),0 10px 20px 3px rgba(100,0,200,.3);border-color:rgba(170,0,255,.7)}
+  100%{box-shadow:0 0 8px 2px rgba(160,0,255,.3),0 -6px 16px 2px rgba(180,0,255,.25),0 6px 14px 2px rgba(120,0,200,.2);border-color:rgba(160,0,255,.5)}
 }
 @keyframes bossBarGlow{
   0%,100%{box-shadow:0 0 6px rgba(160,0,255,.3)}
@@ -863,7 +856,14 @@ function renderStats(){
   const qs=day.quests;
   const active=qs.filter(q=>!q.completed).length;
   const done=qs.filter(q=>q.completed).length;
-  const urgent=qs.filter(q=>!q.completed&&q.pri==='urgent').length;
+  // Count urgent tasks + urgent subtasks
+  let urgent=0;
+  qs.forEach(q=>{
+    if(!q.completed&&q.pri==='urgent') urgent++;
+    (q.subtasks||[]).forEach(s=>{
+      if(!s.done&&s.pri==='urgent') urgent++;
+    });
+  });
   const total=qs.length;
   const pct=total?Math.round(done/total*100):0;
   document.getElementById('sAct').textContent=active;
@@ -1268,7 +1268,14 @@ function renderHistory(container){
 // ─── FILTER URGENT ───
 function filterUrgent(){
   const day=getDay(S.currentDate);
-  const urgentTasks=day.quests.filter(q=>q.pri==='urgent'&&!q.completed);
+  // Collect urgent tasks AND urgent subtasks
+  const urgentTasks=[];
+  day.quests.forEach(q=>{
+    if(q.pri==='urgent'&&!q.completed) urgentTasks.push({...q, _isSubtask:false});
+    (q.subtasks||[]).forEach(s=>{
+      if(s.pri==='urgent'&&!s.done) urgentTasks.push({...s, text:(q.text+' → '+s.text), _isSubtask:true, _parentId:q.id, cat:q.cat});
+    });
+  });
   if(urgentTasks.length===0){showNotif('NO URGENT TASKS');return;}
 
   // Switch to ALL tab and scroll to first urgent task
@@ -1289,9 +1296,13 @@ function filterUrgent(){
     <div style="font-family:Orbitron,monospace;font-size:10px;letter-spacing:3px;color:var(--danger);text-shadow:0 0 10px var(--danger);margin-bottom:16px">⚠ URGENT QUESTS — ${urgentTasks.length}</div>`;
 
   urgentTasks.forEach(q=>{
-    html+=`<div onclick="scrollToQuest('${q.id}');document.getElementById('urgentModal').remove()" style="padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,51,85,.3);border-radius:4px;cursor:pointer;background:rgba(255,51,85,.05);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:600;color:var(--text);transition:all .15s" onmouseover="this.style.borderColor='rgba(255,51,85,.7)'" onmouseout="this.style.borderColor='rgba(255,51,85,.3)'">
+    const clickFn = q._isSubtask
+      ? `scrollToSubtask('${q._parentId}','${q.id}');document.getElementById('urgentModal').remove()`
+      : `scrollToQuest('${q.id}');document.getElementById('urgentModal').remove()`;
+    html+=`<div onclick="${clickFn}" style="padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,51,85,.3);border-radius:4px;cursor:pointer;background:rgba(255,51,85,.05);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:600;color:var(--text);transition:all .15s" onmouseover="this.style.borderColor='rgba(255,51,85,.7)'" onmouseout="this.style.borderColor='rgba(255,51,85,.3)'">
       <span style="color:var(--danger);margin-right:8px">⚠</span>${q.text}
-      ${q.cat?`<span style="font-family:Orbitron,monospace;font-size:7px;letter-spacing:1px;color:var(--mid);margin-left:8px">${q.cat}</span>`:''}
+      ${q._isSubtask?`<span style="font-family:Orbitron,monospace;font-size:7px;letter-spacing:1px;color:var(--purple);margin-left:6px">SUBTASK</span>`:''}
+      ${q.cat?`<span style="font-family:Orbitron,monospace;font-size:7px;letter-spacing:1px;color:var(--mid);margin-left:6px">${q.cat}</span>`:''}
     </div>`;
   });
 
@@ -1301,13 +1312,44 @@ function filterUrgent(){
 }
 
 function scrollToQuest(qid){
-  // Switch to the tab containing this quest
   const day=getDay(S.currentDate);
   const q=day.quests.find(q=>String(q.id)===String(qid));
   if(q&&q.cat){S.tab=q.cat;rebuildTabs();renderMain();}
   setTimeout(()=>{
     const el=document.querySelector(`.q-wrap[data-id="${qid}"]`);
     if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  },100);
+}
+
+function scrollToSubtask(parentQid, sid){
+  // Navigate to the parent quest's tab first
+  const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(parentQid));
+  if(q&&q.cat){S.tab=q.cat;rebuildTabs();renderMain();}
+  setTimeout(()=>{
+    // Scroll parent into view first
+    const qwrap=document.querySelector(`.q-wrap[data-id="${parentQid}"]`);
+    if(qwrap){
+      // Make sure subtasks are visible
+      if(!qwrap.querySelector('.sub-wrap')){
+        const dayD=getDay(S.currentDate);
+        const qq=dayD.quests.find(q=>String(q.id)===String(parentQid));
+        if(qq&&(qq.subtasks||[]).length>0) qwrap.appendChild(buildSubWrap(qq));
+      }
+      // Now find and highlight the specific subtask
+      setTimeout(()=>{
+        const subEl=qwrap.querySelector(`.sub-item[data-sid="${sid}"]`);
+        if(subEl){
+          subEl.scrollIntoView({behavior:'smooth',block:'center'});
+          // Flash highlight
+          subEl.style.transition='box-shadow .15s';
+          subEl.style.boxShadow='0 0 0 2px rgba(255,51,85,.9), 0 0 16px rgba(255,51,85,.5)';
+          setTimeout(()=>{subEl.style.boxShadow='';},1500);
+        } else {
+          qwrap.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      },120);
+    }
   },100);
 }
 
@@ -2961,7 +3003,11 @@ async function initApp(){
       localStorage.setItem('sl3_ui', JSON.stringify(fb.ui));
     }
     if(fb.player){
-      localStorage.setItem('sl3_player', fb.player);
+      // fb.player may be JSON-stringified, parse it safely
+      let pname = fb.player;
+      try { pname = JSON.parse(pname); } catch(e){}
+      if(typeof pname !== 'string') pname = String(pname);
+      localStorage.setItem('sl3_player', pname);
       loadPlayerName();
     }
 
