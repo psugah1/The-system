@@ -379,6 +379,13 @@ body::after{
 .sub-overflow.open{opacity:1;pointer-events:all}
 .sub-more-btn{background:none;border:1px solid rgba(0,180,255,.2);color:var(--dim);width:22px;height:22px;border-radius:2px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:1px}
 .sub-more-btn.open{border-color:rgba(0,180,255,.6);color:var(--accent)}
+.sub-recur-icon{font-size:10px;margin-left:4px;cursor:default;filter:drop-shadow(0 0 4px rgba(0,220,150,.8));animation:recurGlow 2s ease-in-out infinite}
+@keyframes recurGlow{
+  0%,100%{filter:drop-shadow(0 0 3px rgba(0,220,150,.6));opacity:.8}
+  50%{filter:drop-shadow(0 0 7px rgba(0,255,160,1));opacity:1}
+}
+.sub-recur-btn{background:none;border:1px solid rgba(0,180,255,.2);color:var(--dim);width:22px;height:22px;border-radius:2px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sub-recur-btn.active{border-color:rgba(0,220,150,.6);color:#00dc96;background:rgba(0,220,150,.1)}
 .qbtn-del{border-color:rgba(255,51,85,.5);color:var(--danger);background:rgba(255,51,85,.08);font-size:13px;font-weight:700}
 .qbtn-del:active{background:rgba(255,51,85,.25)}
 .sub-del{background:none;border:1px solid rgba(255,51,85,.4);color:var(--danger);cursor:pointer;font-size:11px;padding:2px 5px;border-radius:2px;transition:all .15s;font-weight:700}
@@ -1551,7 +1558,12 @@ function carryLockedQuests(fromDate, toDate){
         originalId:srcQ.originalId||String(srcQ.id), // track source for dedup
         completed:false,
         locked:true,
-        subtasks:(srcQ.subtasks||[]).map(s=>({...s,id:uid(),done:false}))
+        subtasks:(srcQ.subtasks||[]).map(s=>({
+          ...s,
+          id:uid(),
+          // recurring subtasks always reset to undone; one-time keep their done state
+          done: s.recurring ? false : s.done
+        }))
       };
       dest.quests.push(newQ);
       if(!dest.order)dest.order=[];
@@ -1890,12 +1902,13 @@ function buildSubItemRow(s, opts){
     row.innerHTML=`
       <div class="sub-dh" title="Drag to reorder, or drop on task/subtask to nest">⋮⋮</div>
       <div class="sub-chk" onclick="${opts.onToggle}">${s.done?'✓':''}</div>
-      <div class="sub-txt">${esc(s.text)}${priLabel}</div>
+      <div class="sub-txt">${esc(s.text)}${priLabel}${s.recurring?'<span class="sub-recur-icon">🔁</span>':''}</div>
       <div class="sub-acts">
         <div class="sub-overflow" id="${subMenuId}">
           <button class="sub-edit-btn" onclick="${opts.onEdit}">✏</button>
           ${ssToggleBtn}
           ${dupeBtn}
+          <button class="sub-recur-btn ${s.recurring?'active':''}" onclick="${opts.onRecur}" title="${s.recurring?'Recurring - resets daily':'One-time task'}">🔁</button>
           <button class="sub-del" onclick="${opts.onDel}">✕</button>
         </div>
         <button class="sub-more-btn" onclick="toggleSubMenu('${subMenuId}',this)">•••</button>
@@ -1936,6 +1949,7 @@ function buildSubWrap(q){
         onToggle:`toggleSub1('${qid}','${sid}')`,
         onEdit:`startSubEdit('${qid}','${sid}')`,
         onSave:`saveSubEdit('${qid}','${sid}')`,
+        onRecur:`toggleSubRecur('${qid}','${sid}')`,
         priQid:qid, priSid:sid, priDepth:'1', priXid:'',
         onDel:`delSub1('${qid}','${sid}')`
       });
@@ -2096,6 +2110,18 @@ function toggleSub(qid){
     const inp=qwrap.querySelector('.sub-edit-inp');
     if(inp){inp.focus();inp.select();}
   },50);
+}
+
+function toggleSubRecur(qid,sid){
+  pushUndo();
+  const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(qid));
+  if(!q)return;
+  const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+  if(!s)return;
+  s.recurring=!s.recurring;
+  saveAll();
+  rebuildSubWrap(qid);
 }
 
 function startSubEdit(qid,sid){S.editingSub=String(sid);rebuildSubWrap(qid);}
