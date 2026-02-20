@@ -266,6 +266,21 @@ body::after{
 }
 @keyframes urgentBarGlow{
   0%,100%{box-shadow:none;opacity:1}
+/* ── BOSS PRIORITY ── */
+.pri-btn.pb{background:rgba(160,0,255,.15);border-color:rgba(160,0,255,.4);color:#c040ff}
+.pri-btn.pb.active{background:rgba(160,0,255,.3);border-color:#c040ff}
+.cpbtn.sel-b{border-color:#c040ff;color:#c040ff;background:rgba(160,0,255,.1)}
+.pri-inline-b{color:#c040ff;background:rgba(160,0,255,.1);border:1px solid rgba(160,0,255,.3)}
+.qi-row.pri-boss{border-color:rgba(160,0,255,.6);animation:bossPulse 4s ease-in-out infinite}
+.qi-row.pri-boss::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#c040ff;border-radius:3px 0 0 3px;box-shadow:0 0 8px #c040ff;animation:bossBarGlow 4s ease-in-out infinite}
+@keyframes bossPulse{
+  0%,100%{box-shadow:0 0 6px rgba(160,0,255,.15),inset 0 0 15px rgba(120,0,200,.04);border-color:rgba(160,0,255,.5)}
+  50%{box-shadow:0 0 18px 3px rgba(160,0,255,.35),inset 0 0 25px rgba(120,0,200,.08);border-color:rgba(200,50,255,.9)}
+}
+@keyframes bossBarGlow{
+  0%,100%{box-shadow:0 0 6px rgba(160,0,255,.3)}
+  50%{box-shadow:0 0 14px 2px rgba(160,0,255,.7)}
+}
   50%{box-shadow:0 0 8px 2px rgba(255,51,85,.6);opacity:.8}
 }
 
@@ -557,7 +572,7 @@ body::after{
 <script>
 // ─── CONSTANTS ───
 const COLORS=['#00d4ff','#ff6b35','#00ff88','#c855ff','#ffd700','#ff3355','#00ffcc','#ff88cc','#88aaff','#ffaa00'];
-const XP_MAP={normal:10,hard:25,urgent:15};
+const XP_MAP={normal:10,hard:25,urgent:15,boss:100};
 const SUBTASK_XP=5;
 const DEFAULT_CATS=['DAILY','EXERCISE','STAY SHREDDED','3D CARVING'];
 const DEFAULT_COLORS={'DAILY':'#00d4ff','EXERCISE':'#ff6b35','STAY SHREDDED':'#00ff88','3D CARVING':'#c855ff'};
@@ -931,6 +946,7 @@ function buildTopOpts(){
     {key:'normal', cls:'pn', label:'⚡ NORMAL'},
     {key:'hard',   cls:'ph', label:'☠ HARD'},
     {key:'urgent', cls:'pu', label:'⚠ URGENT'},
+    {key:'boss',   cls:'pb', label:'💀 BOSS'},
   ];
   priDefs.forEach(({key,cls,label})=>{
     const sel=S.newTopPri===key;
@@ -1022,6 +1038,7 @@ function buildCatAddRow(cat){
         <button class="cpbtn ${pri==='normal'?'sel-n':''}" onclick="setCatPri('${esc(cat)}','normal')">N</button>
         <button class="cpbtn ${pri==='hard'?'sel-h':''}" onclick="setCatPri('${esc(cat)}','hard')">H</button>
         <button class="cpbtn ${pri==='urgent'?'sel-u':''}" onclick="setCatPri('${esc(cat)}','urgent')">U</button>
+        <button class="cpbtn ${pri==='boss'?'sel-b':''}" onclick="setCatPri('${esc(cat)}','boss')">💀</button>
       </div>
       <button class="cat-add-btn" onclick="addQuestCat('${esc(cat)}')">+</button>
     </div>
@@ -1064,7 +1081,7 @@ function buildQuestWrap(q,cat){
 function buildQuestRow(q){
   const pri=q.pri||'normal';
   const div=document.createElement('div');
-  div.className=`qi-row ${pri==='normal'?'normal':'pri-'+pri} ${q.completed?'done':''}`;
+  div.className=`qi-row ${pri==='normal'?'normal':'pri-'+pri} ${q.completed?'done':''}${pri==='boss'?' boss-quest':''}`;
   div.dataset.id=q.id;
   div.dataset.cat=q.cat;
 
@@ -1077,7 +1094,9 @@ function buildQuestRow(q){
   if(S.editing===String(q.id)){
     innerHtml+=`<input class="qedit" data-eid="${q.id}" value="${esc(q.text)}" maxlength="120"/>`;
   } else {
-    const priLabel=pri==='urgent'
+    const priLabel=pri==='boss'
+      ?`<span class="pri-inline pri-inline-b">💀 BOSS RAID</span>`
+      :pri==='urgent'
       ?`<span class="pri-inline pri-inline-u">⚠ URGENT</span>`
       :pri==='hard'
       ?`<span class="pri-inline pri-inline-h">HARD +XP</span>`
@@ -1092,6 +1111,7 @@ function buildQuestRow(q){
     innerHtml+=`<button class="cpbtn ${pri==='normal'?'sel-n':''}" onclick="setQuestPri('${q.id}','normal')">N</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='hard'?'sel-h':''}" onclick="setQuestPri('${q.id}','hard')">H</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='urgent'?'sel-u':''}" onclick="setQuestPri('${q.id}','urgent')">U</button>`;
+    innerHtml+=`<button class="cpbtn ${pri==='boss'?'sel-b':''}" onclick="setQuestPri('${q.id}','boss')">💀</button>`;
   } else if(!q.completed){
     innerHtml+=`<button class="qbtn qbtn-edit" onclick="startEdit('${q.id}')">✏</button>`;
   }
@@ -1328,6 +1348,7 @@ function setCatPri(cat,pri){
       if(b.textContent==='N'&&pri==='normal')b.classList.add('sel-n');
       if(b.textContent==='H'&&pri==='hard')b.classList.add('sel-h');
       if(b.textContent==='U'&&pri==='urgent')b.classList.add('sel-u');
+      if(b.textContent==='💀'&&pri==='boss')b.classList.add('sel-b');
     });
   }
 }
@@ -1366,7 +1387,8 @@ function toggleQ(id){
 
   if(q.completed){
     const xp=XP_MAP[q.pri||'normal']||10;
-    showCompleteOverlay(`+${xp} XP EARNED`);
+    if(q.pri==='boss') showNotif('💀 BOSS DEFEATED! +100 XP');
+    else showCompleteOverlay(`+${xp} XP EARNED`);
     doFlash();
   }
 
