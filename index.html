@@ -292,47 +292,25 @@ body::after{
   100%{border-color:rgba(255,51,85,.4) !important;box-shadow:0 0 4px rgba(255,51,85,.2),inset 0 0 6px rgba(255,51,85,.05)}
 }
 
-/* ── BOSS PURPLE PULSE ── */
-.boss-wrap .qi-row{
-  background:rgba(40,0,90,.15) !important;
-  transition:none !important;
-  animation:bossPurplePulse 2s ease-in-out infinite !important;
-  border-color:rgba(160,0,255,.7) !important;
-}
-@keyframes bossPurplePulse{
-  0%,100%{box-shadow:0 0 6px rgba(140,0,255,.4);border-color:rgba(140,0,255,.5) !important}
-  50%{box-shadow:0 0 20px 5px rgba(180,0,255,.8);border-color:rgba(210,0,255,.95) !important}
-}
-@keyframes bossPulse{
-  0%  {box-shadow:0 0 10px 3px rgba(160,0,255,.4),0 -8px 20px 3px rgba(200,0,255,.3),0 8px 18px 3px rgba(120,0,200,.25)}
-  33% {box-shadow:0 0 20px 6px rgba(190,0,255,.6),0 -14px 28px 5px rgba(220,60,255,.5),0 5px 12px 2px rgba(150,0,230,.3)}
-  66% {box-shadow:0 0 14px 4px rgba(150,0,240,.5),0 -5px 15px 3px rgba(170,0,255,.35),0 14px 24px 4px rgba(110,0,210,.4)}
-  100%{box-shadow:0 0 10px 3px rgba(160,0,255,.4),0 -8px 20px 3px rgba(200,0,255,.3),0 8px 18px 3px rgba(120,0,200,.25)}
-}
-.sub-item.sub-boss{
-  position:relative;
-  overflow:visible;
-  border-color:rgba(180,0,255,.6) !important;
-  background:rgba(60,0,120,.15) !important;
-  animation:subBossPulse 3s ease-in-out infinite !important;
-}
-@keyframes subBossPulse{
-  0%  {box-shadow:0 0 6px 2px rgba(160,0,255,.3),0 -4px 10px 1px rgba(200,0,255,.2)}
-  50% {box-shadow:0 0 12px 4px rgba(190,0,255,.5),0 -8px 16px 3px rgba(220,60,255,.4),0 6px 12px 2px rgba(140,0,220,.3)}
-  100%{box-shadow:0 0 6px 2px rgba(160,0,255,.3),0 -4px 10px 1px rgba(200,0,255,.2)}
-}
-
 /* ── BOSS PRIORITY ── */
 .pri-btn.pb{background:rgba(160,0,255,.15);border-color:rgba(160,0,255,.4);color:#c040ff}
 .pri-btn.pb.active{background:rgba(160,0,255,.3);border-color:#c040ff}
 .cpbtn.sel-b{border-color:#c040ff;color:#c040ff;background:rgba(160,0,255,.1)}
 .pri-inline-b{color:#c040ff;background:rgba(160,0,255,.1);border:1px solid rgba(160,0,255,.3)}
-/* boss keyframes defined above */
+
+/* ── BOSS TASK PULSE ── */
+@keyframes bossPurplePulse{
+  0%,100%{box-shadow:0 0 5px 1px rgba(150,0,255,.5)}
+  50%{box-shadow:0 0 18px 6px rgba(180,0,255,.9)}
+}
 @keyframes bossBarGlow{
   0%,100%{box-shadow:0 0 6px rgba(160,0,255,.3)}
   50%{box-shadow:0 0 14px 2px rgba(160,0,255,.7)}
 }
-  50%{box-shadow:0 0 8px 2px rgba(255,51,85,.6);opacity:.8}
+.sub-item.sub-boss{
+  border-color:rgba(160,0,255,.7) !important;
+  background:rgba(40,0,100,.12) !important;
+  animation:bossPurplePulse 2s ease-in-out infinite !important;
 }
 
 .qi-row.normal::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
@@ -1156,9 +1134,14 @@ function buildQuestWrap(q,cat){
 function buildQuestRow(q){
   const pri=q.pri||'normal';
   const div=document.createElement('div');
-  div.className=`qi-row ${pri==='normal'?'normal':'pri-'+pri} ${q.completed?'done':''}${pri==='boss'?' boss-quest':''}`;
+  div.className=`qi-row ${pri==='normal'?'normal':'pri-'+pri} ${q.completed?'done':''}`;
   div.dataset.id=q.id;
   div.dataset.cat=q.cat;
+  if(pri==='boss'&&!q.completed){
+    div.style.animation='bossPurplePulse 2s ease-in-out infinite';
+    div.style.borderColor='rgba(160,0,255,.7)';
+    div.style.background='rgba(40,0,90,.15)';
+  }
 
   let innerHtml='';
   innerHtml+=`<div class="dh" data-dh="${q.id}" title="Drag full stack">⋮⋮</div>`;
