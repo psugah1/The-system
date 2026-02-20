@@ -136,6 +136,20 @@ body::after{
 .qi:focus{border-color:rgba(0,220,255,.7);box-shadow:0 0 12px rgba(0,200,255,.2),inset 0 0 8px rgba(0,150,255,.05)}
 
 /* ── SYSTEM NOTIFICATION ── */
+/* ── BOSS SKULL IN BANNER ── */
+.boss-skull{
+  position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;
+  color:#c040ff;cursor:pointer;
+  text-shadow:0 0 10px #c040ff,0 0 20px rgba(160,0,255,.5);
+  animation:skullPulse 2s ease-in-out infinite;
+  user-select:none;
+}
+@keyframes skullPulse{
+  0%,100%{text-shadow:0 0 8px #c040ff,0 0 16px rgba(160,0,255,.4);opacity:.8}
+  50%{text-shadow:0 0 16px #c040ff,0 0 32px rgba(180,0,255,.7),0 0 48px rgba(140,0,220,.3);opacity:1}
+}
+
 .notif{position:fixed;top:36px;left:50%;transform:translateX(-50%);z-index:350;pointer-events:none;opacity:0;transition:opacity .25s ease,transform .25s ease;transform:translateX(-50%) translateY(-10px)}
 .notif.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .notif.hide{opacity:0;transform:translateX(-50%) translateY(-10px)}
@@ -268,49 +282,59 @@ body::after{
   0%,100%{box-shadow:none;opacity:1}
 /* ── URGENT SUBTASK GLOW ── */
 .sub-item.sub-urgent{
-  border-color:rgba(255,51,85,.45);
-  animation:subUrgentPulse 2s ease-in-out infinite;
   position:relative;
+  border-color:rgba(255,51,85,.6) !important;
+  background:rgba(255,51,85,.06) !important;
+  animation:subUrgentPulse 2s ease-in-out infinite !important;
+}
+.sub-item.sub-urgent::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:var(--danger);
+  border-radius:3px 0 0 3px;
+  box-shadow:0 0 8px var(--danger);
+  animation:subUrgentBarGlow 2s ease-in-out infinite;
 }
 @keyframes subUrgentPulse{
-  0%,100%{box-shadow:0 0 4px rgba(255,51,85,.2),inset 0 0 8px rgba(255,51,85,.04);border-color:rgba(255,51,85,.35)}
-  50%{box-shadow:0 0 12px rgba(255,51,85,.4),inset 0 0 14px rgba(255,51,85,.08);border-color:rgba(255,51,85,.8)}
+  0%,100%{box-shadow:0 0 6px rgba(255,51,85,.25),inset 0 0 10px rgba(255,51,85,.05);border-color:rgba(255,51,85,.5)}
+  50%{box-shadow:0 0 16px 3px rgba(255,51,85,.5),inset 0 0 18px rgba(255,51,85,.1);border-color:rgba(255,51,85,.95)}
+}
+@keyframes subUrgentBarGlow{
+  0%,100%{box-shadow:0 0 4px rgba(255,51,85,.4);opacity:.8}
+  50%{box-shadow:0 0 10px 2px rgba(255,51,85,.8);opacity:1}
 }
 
 /* ── BOSS FIRE ANIMATION ── */
-.sub-item.sub-boss,.qi-row.pri-boss{position:relative;overflow:visible}
 .qi-row.pri-boss{
-  border-color:rgba(160,0,255,.6) !important;
-  animation:bossPulse 4s ease-in-out infinite !important;
-  z-index:1;
+  position:relative;
+  overflow:visible !important;
+  border-color:rgba(180,0,255,.7) !important;
+  background:rgba(60,0,120,.18) !important;
+  animation:bossPulse 3s ease-in-out infinite !important;
 }
-/* boss fire handled by box-shadow on main element */
-@keyframes bossFireOuter{
-  0%,100%{box-shadow:0 0 8px 2px rgba(140,0,255,.25),0 0 20px 4px rgba(100,0,200,.15)}
-  33%{box-shadow:0 0 14px 4px rgba(180,0,255,.4),0 0 28px 8px rgba(120,0,220,.2),0 -4px 12px 2px rgba(200,50,255,.3)}
-  66%{box-shadow:0 0 10px 2px rgba(120,0,240,.3),0 0 22px 6px rgba(80,0,180,.18),0 4px 12px 2px rgba(160,0,255,.25)}
+.qi-row.pri-boss::before{
+  background:linear-gradient(180deg,#c040ff,#8800cc) !important;
+  box-shadow:0 0 10px #c040ff !important;
+}
+@keyframes bossPulse{
+  0%  {box-shadow:0 0 10px 3px rgba(160,0,255,.4),0 -8px 20px 3px rgba(200,0,255,.3),0 8px 18px 3px rgba(120,0,200,.25)}
+  33% {box-shadow:0 0 20px 6px rgba(190,0,255,.6),0 -14px 28px 5px rgba(220,60,255,.5),0 5px 12px 2px rgba(150,0,230,.3)}
+  66% {box-shadow:0 0 14px 4px rgba(150,0,240,.5),0 -5px 15px 3px rgba(170,0,255,.35),0 14px 24px 4px rgba(110,0,210,.4)}
+  100%{box-shadow:0 0 10px 3px rgba(160,0,255,.4),0 -8px 20px 3px rgba(200,0,255,.3),0 8px 18px 3px rgba(120,0,200,.25)}
 }
 .sub-item.sub-boss{
-  border-color:rgba(160,0,255,.5);
-  background:rgba(80,0,160,.12);
-  animation:subBossPulse 3s ease-in-out infinite;
-}
-.sub-item.sub-boss::after{
-  content:'';
-  position:absolute;
-  inset:-2px;
-  border-radius:4px;
-  pointer-events:none;
-  animation:subBossFireOuter 3s ease-in-out infinite;
-  z-index:0;
+  position:relative;
+  overflow:visible;
+  border-color:rgba(180,0,255,.6) !important;
+  background:rgba(60,0,120,.15) !important;
+  animation:subBossPulse 3s ease-in-out infinite !important;
 }
 @keyframes subBossPulse{
-  0%,100%{border-color:rgba(160,0,255,.4);box-shadow:0 0 6px rgba(140,0,255,.15)}
-  50%{border-color:rgba(200,50,255,.8);box-shadow:0 0 14px rgba(160,0,255,.35)}
-}
-@keyframes subBossFireOuter{
-  0%,100%{box-shadow:0 0 6px 1px rgba(140,0,255,.2),0 -3px 8px 1px rgba(180,50,255,.2)}
-  50%{box-shadow:0 0 12px 3px rgba(160,0,255,.35),0 -5px 14px 2px rgba(200,50,255,.3),0 5px 10px 1px rgba(120,0,200,.2)}
+  0%  {box-shadow:0 0 6px 2px rgba(160,0,255,.3),0 -4px 10px 1px rgba(200,0,255,.2)}
+  50% {box-shadow:0 0 12px 4px rgba(190,0,255,.5),0 -8px 16px 3px rgba(220,60,255,.4),0 6px 12px 2px rgba(140,0,220,.3)}
+  100%{box-shadow:0 0 6px 2px rgba(160,0,255,.3),0 -4px 10px 1px rgba(200,0,255,.2)}
 }
 
 /* ── BOSS PRIORITY ── */
@@ -318,13 +342,7 @@ body::after{
 .pri-btn.pb.active{background:rgba(160,0,255,.3);border-color:#c040ff}
 .cpbtn.sel-b{border-color:#c040ff;color:#c040ff;background:rgba(160,0,255,.1)}
 .pri-inline-b{color:#c040ff;background:rgba(160,0,255,.1);border:1px solid rgba(160,0,255,.3)}
-/* boss rule consolidated above */
-@keyframes bossPulse{
-  0%  {box-shadow:0 0 8px 2px rgba(160,0,255,.3),0 -6px 16px 2px rgba(180,0,255,.25),0 6px 14px 2px rgba(120,0,200,.2);border-color:rgba(160,0,255,.5)}
-  33% {box-shadow:0 0 16px 4px rgba(180,0,255,.5),0 -10px 22px 4px rgba(200,50,255,.4),0 4px 10px 1px rgba(140,0,220,.25);border-color:rgba(200,60,255,.9)}
-  66% {box-shadow:0 0 12px 2px rgba(140,0,240,.4),0 -4px 12px 2px rgba(160,0,255,.3),0 10px 20px 3px rgba(100,0,200,.3);border-color:rgba(170,0,255,.7)}
-  100%{box-shadow:0 0 8px 2px rgba(160,0,255,.3),0 -6px 16px 2px rgba(180,0,255,.25),0 6px 14px 2px rgba(120,0,200,.2);border-color:rgba(160,0,255,.5)}
-}
+/* boss keyframes defined above */
 @keyframes bossBarGlow{
   0%,100%{box-shadow:0 0 6px rgba(160,0,255,.3)}
   50%{box-shadow:0 0 14px 2px rgba(160,0,255,.7)}
@@ -534,6 +552,7 @@ body::after{
 <div class="system-banner">
   <canvas class="system-banner-canvas" id="bannerCanvas"></canvas>
   <div class="system-banner-title">THE SYSTEM</div>
+  <div class="boss-skull" id="bossSkull" title="Active boss raids" onclick="showBossRaids()" style="display:none">💀 <span id="bossSkullCount">0</span></div>
 </div>
 
 <!-- HEADER -->
@@ -880,6 +899,7 @@ function renderStats(){
   const totalXP=calcTotalXP();
   const el=document.getElementById('playerTotalXP');
   if(el) el.textContent=totalXP.toLocaleString();
+  updateBossSkull();
   const streak=calcStreak();
   const sel=document.getElementById('streakVal');
   if(sel) sel.textContent=streak>0?`🔥${streak}`:'—';
@@ -1353,6 +1373,60 @@ function scrollToSubtask(parentQid, sid){
   },100);
 }
 
+// ─── BOSS SKULL ───
+function updateBossSkull(){
+  const day=getDay(S.currentDate);
+  let bossCount=0;
+  day.quests.forEach(q=>{
+    if(q.pri==='boss'&&!q.completed) bossCount++;
+    (q.subtasks||[]).forEach(s=>{if(s.pri==='boss'&&!s.done)bossCount++;});
+  });
+  // check all days for boss tasks
+  let totalBoss=0;
+  Object.values(dayData).forEach(d=>{
+    (d.quests||[]).forEach(q=>{
+      if(q.pri==='boss'&&!q.completed) totalBoss++;
+    });
+  });
+  const skull=document.getElementById('bossSkull');
+  const cnt=document.getElementById('bossSkullCount');
+  if(skull){skull.style.display=totalBoss>0?'block':'none';}
+  if(cnt)cnt.textContent=totalBoss;
+}
+
+function showBossRaids(){
+  const existing=document.getElementById('bossModal');
+  if(existing)existing.remove();
+  const allBoss=[];
+  Object.entries(dayData).forEach(([ds,d])=>{
+    (d.quests||[]).forEach(q=>{
+      if(q.pri==='boss'&&!q.completed) allBoss.push({...q,_date:ds});
+    });
+  });
+  if(!allBoss.length){showNotif('NO ACTIVE BOSS RAIDS');return;}
+
+  const mo=document.createElement('div');
+  mo.id='bossModal';
+  mo.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:400;display:flex;align-items:center;justify-content:center;padding:20px';
+  mo.onclick=e=>{if(e.target===mo)mo.remove();};
+
+  let html=`<div style="background:rgba(5,0,18,.97);border:1px solid rgba(160,0,255,.6);border-radius:8px;padding:20px;max-width:420px;width:100%;box-shadow:0 0 40px rgba(160,0,255,.3);max-height:80vh;overflow-y:auto">
+    <div style="font-family:Orbitron,monospace;font-size:10px;letter-spacing:3px;color:#c040ff;text-shadow:0 0 12px #c040ff;margin-bottom:16px">💀 ACTIVE BOSS RAIDS — ${allBoss.length}</div>`;
+  allBoss.forEach(q=>{
+    const isToday=q._date===todayStr();
+    html+=`<div onclick="if('${q._date}'===S.currentDate){scrollToQuest('${q.id}');}else{S.currentDate='${q._date}';render();setTimeout(()=>scrollToQuest('${q.id}'),200);}document.getElementById('bossModal').remove()"
+      style="padding:10px 12px;margin-bottom:8px;border:1px solid rgba(160,0,255,.35);border-radius:4px;cursor:pointer;background:rgba(80,0,160,.1);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:600;color:#e0b0ff"
+      onmouseover="this.style.borderColor='rgba(200,50,255,.8)'" onmouseout="this.style.borderColor='rgba(160,0,255,.35)'">
+      <span style="margin-right:8px">💀</span>${q.text}
+      <span style="font-family:Orbitron,monospace;font-size:7px;letter-spacing:1px;color:rgba(160,0,255,.6);margin-left:8px">${q.cat||''}</span>
+      ${isToday?'<span style="font-family:Orbitron,monospace;font-size:7px;color:#00d4ff;margin-left:6px">TODAY</span>':''}
+    </div>`;
+  });
+  html+=`<button onclick="document.getElementById('bossModal').remove()" style="margin-top:8px;width:100%;padding:8px;background:none;border:1px solid rgba(160,0,255,.3);color:#c040ff;font-family:Orbitron,monospace;font-size:8px;letter-spacing:2px;border-radius:3px;cursor:pointer">CLOSE</button></div>`;
+  mo.innerHTML=html;
+  document.body.appendChild(mo);
+}
+
 function goToday(){
   S.currentDate = todayStr();
   render();
@@ -1694,9 +1768,12 @@ function rebuildSubWrap(qid){
   if(!q)return;
   const qwrap=document.querySelector(`.q-wrap[data-id="${qid}"]`);
   if(!qwrap)return;
-  const old=qwrap.querySelector('.sub-wrap');
-  if(old)old.remove();
-  qwrap.appendChild(buildSubWrap(q));
+  const existing=qwrap.querySelector('.sub-wrap');
+  if(existing)existing.remove();
+  // Only show sub-wrap if there are actual subtasks
+  if((q.subtasks||[]).length>0){
+    qwrap.appendChild(buildSubWrap(q));
+  }
 }
 
 // ── Build a sub-item row (shared by level 1 and 2) ──
