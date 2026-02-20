@@ -367,6 +367,11 @@ body::after{
 .qacts-overflow.open{opacity:1;pointer-events:all}
 .qbtn-more{border-color:rgba(0,180,255,.25);color:var(--mid);letter-spacing:1px;font-size:10px;width:26px}
 .qbtn-more:active,.qbtn-more.open{border-color:rgba(0,180,255,.6);color:var(--accent);background:rgba(0,180,255,.1)}
+.qbtn-more.locked{border-color:rgba(255,215,0,.6);color:#ffd700;animation:lockBtnGlow 2s ease-in-out infinite}
+@keyframes lockBtnGlow{
+  0%,100%{box-shadow:0 0 4px rgba(255,215,0,.4);border-color:rgba(255,215,0,.5)}
+  50%{box-shadow:0 0 10px 2px rgba(255,215,0,.8);border-color:rgba(255,215,0,.9)}
+}
 .qbtn{width:26px;height:26px;border-radius:3px;border:1px solid transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:transparent;transition:all .2s}
 .qbtn-edit{border-color:rgba(0,170,255,.25);color:var(--blue)}
 .qbtn-edit:active{background:rgba(0,170,255,.2)}
@@ -1206,11 +1211,11 @@ function buildQuestRow(q){
     innerHtml+=`<div class="qacts-overflow" id="qo-${q.id}">`;
     if(!q.completed) innerHtml+=`<button class="qbtn qbtn-edit" onclick="startEdit('${q.id}')">✏</button>`;
     innerHtml+=`<button class="qbtn qbtn-sub" onclick="toggleSub('${q.id}')" title="Add subtask">+</button>`;
+    innerHtml+=`<button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>`;
     innerHtml+=`<button class="qbtn qbtn-dupe" onclick="dupeQ('${q.id}')" title="Duplicate">⧉</button>`;
     innerHtml+=`<button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>`;
     innerHtml+=`</div>`;
-    innerHtml+=`<button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>`;
-    innerHtml+=`<button class="qbtn qbtn-more" onclick="toggleQActsMenu('${q.id}',this)">•••</button>`;
+    innerHtml+=`<button class="qbtn qbtn-more ${q.locked?'locked':''}" onclick="toggleQActsMenu('${q.id}',this)">•••</button>`;
   }
   innerHtml+=`</div>`;
 
@@ -1558,6 +1563,11 @@ function carryLockedQuests(fromDate, toDate){
     if(already){
       // Update priority in case it changed
       already.pri=srcQ.pri;
+      // Also sync subtasks - carry locked ones, reset recurring, drop done one-time
+      already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
+        const existing=(already.subtasks||[]).find(es=>es.text===s.text);
+        return existing ? {...existing, recurring:s.recurring, pri:s.pri} : {...s, id:uid(), done:s.recurring?false:s.done};
+      });
     } else {
       const newQ={
         ...srcQ,
