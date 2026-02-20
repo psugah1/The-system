@@ -514,7 +514,7 @@ body::after{
         <div class="ds" id="dateSub">—</div>
       </div>
       <button class="dnbtn" id="btnNext" onclick="shiftDay(1)">›</button>
-      <button class="dnbtn today-btn" id="btnToday" onclick="goToday()" title="Go to today" style="font-size:9px;letter-spacing:1px;width:auto;padding:0 6px;font-family:Orbitron,monospace;display:none">NOW</button>
+      <button class="dnbtn today-btn" id="btnToday" onclick="goToday()" style="font-size:9px;letter-spacing:1px;width:auto;padding:0 6px;font-family:Orbitron,monospace;display:none;color:var(--accent);border-color:var(--accent)">NOW</button>
     </div>
   </div>
   <div class="stats-row">
@@ -1079,8 +1079,6 @@ function buildQuestWrap(q,cat){
 
   // Always show subtasks if they exist
   if((q.subtasks||[]).length > 0){
-    wrap.appendChild(buildSubWrap(q));
-  } else if(S.subShowing[q.id]){
     wrap.appendChild(buildSubWrap(q));
   }
 
@@ -1883,7 +1881,15 @@ function delSub1(qid,sid){
   const q=day.quests.find(q=>String(q.id)===String(qid));
   if(!q)return;
   q.subtasks=(q.subtasks||[]).filter(s=>String(s.id)!==String(sid));
-  saveAll();rebuildSubWrap(qid);renderStats();
+  saveAll();
+  // If no subtasks left, remove the sub-wrap entirely
+  if(q.subtasks.length===0){
+    const qwrap=document.querySelector(`.q-wrap[data-id="${qid}"]`);
+    if(qwrap){const sw=qwrap.querySelector('.sub-wrap');if(sw)sw.remove();}
+  } else {
+    rebuildSubWrap(qid);
+  }
+  renderStats();
 }
 
 // keep old name for backward compat
