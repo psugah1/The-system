@@ -308,20 +308,23 @@ body::after{
 
 /* ── BOSS FIRE ANIMATION ── */
 .boss-wrap{
-  animation:bossWrapPulse 3s ease-in-out infinite;
   border-radius:5px;
+  animation:bossWrapPulse 3s ease-in-out infinite;
 }
 @keyframes bossWrapPulse{
-  0%,100%{box-shadow:0 0 10px 2px rgba(160,0,255,.25),0 -6px 16px 2px rgba(180,0,255,.2)}
-  50%{box-shadow:0 0 22px 6px rgba(190,0,255,.5),0 -12px 26px 4px rgba(210,50,255,.4),0 10px 20px 3px rgba(130,0,220,.3)}
+  0%,100%{box-shadow:0 0 8px 2px rgba(160,0,255,.3)}
+  50%{box-shadow:0 0 24px 8px rgba(190,0,255,.65),0 0 40px 12px rgba(160,0,255,.25)}
 }
-
 .qi-row.pri-boss{
   position:relative;
   overflow:visible !important;
-  border-color:rgba(180,0,255,.7) !important;
-  background:rgba(60,0,120,.18) !important;
-  animation:bossPulse 3s ease-in-out infinite !important;
+  border-color:rgba(180,0,255,.8) !important;
+  background:rgba(60,0,120,.15) !important;
+  animation:bossBorderPulse 3s ease-in-out infinite !important;
+}
+@keyframes bossBorderPulse{
+  0%,100%{border-color:rgba(160,0,255,.5) !important;box-shadow:inset 0 0 12px rgba(120,0,200,.1)}
+  50%{border-color:rgba(210,60,255,1) !important;box-shadow:inset 0 0 24px rgba(160,0,220,.2)}
 }
 .qi-row.pri-boss::before{
   background:linear-gradient(180deg,#c040ff,#8800cc) !important;
@@ -1403,7 +1406,7 @@ function updateBossSkull(){
   const _seenB=new Set();
   Object.values(dayData).forEach(d=>{
     (d.quests||[]).forEach(q=>{
-      const _bkey=String(q.originalId||q.id);
+      const _bkey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
       if(q.pri==='boss'&&!q.completed&&!_seenB.has(_bkey)){
         _seenB.add(_bkey);
         totalBoss++;
@@ -1420,13 +1423,12 @@ function showBossRaids(){
   const existing=document.getElementById('bossModal');
   if(existing)existing.remove();
   const allBoss=[];
-  // Deduplicate by originalId (locked copies share same origin)
+  // Deduplicate by text+cat (most reliable since originalId may not exist on old data)
   const seenBoss=new Set();
-  // Sort so today first
   const sortedEntries=Object.entries(dayData).sort(([a],[b])=>b.localeCompare(a));
   sortedEntries.forEach(([ds,d])=>{
     (d.quests||[]).forEach(q=>{
-      const key=String(q.originalId||q.id);
+      const key=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
       if(q.pri==='boss'&&!q.completed&&!seenBoss.has(key)){
         seenBoss.add(key);
         allBoss.push({...q,_date:ds});
