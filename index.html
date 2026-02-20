@@ -89,6 +89,7 @@ body::after{
 .player-label{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--mid)}
 .player-name{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);cursor:pointer;border-bottom:1px dashed rgba(255,215,0,.3);padding-bottom:1px;transition:color .2s}
 .player-name:hover{color:#fff}
+.player-totalxp{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);text-shadow:0 0 8px rgba(255,215,0,.6)}
 .player-name-input{display:none;font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);background:transparent;border:none;border-bottom:1px solid var(--gold);outline:none;width:100px;padding-bottom:1px}
 .date-nav{display:flex;align-items:center;gap:8px}
 .dnbtn{background:none;border:1px solid var(--border);color:var(--mid);width:30px;height:30px;border-radius:3px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
@@ -293,14 +294,16 @@ body::after{
 .sub-add-btn{background:none;border:1px solid rgba(255,215,0,.3);color:var(--gold);font-size:11px;padding:6px 9px;border-radius:3px;cursor:pointer;font-family:'Orbitron',monospace;letter-spacing:1px;font-size:9px}
 
 /* ── COMPLETE FLASH ── */
-.complete-overlay{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .2s}
-.complete-overlay.show{opacity:1}
-.complete-box{background:var(--panel2);border:2px solid var(--gold);border-radius:8px;padding:24px 40px;text-align:center;animation:completePop .4s cubic-bezier(.34,1.56,.64,1)}
-@keyframes completePop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
-.complete-icon{font-size:40px;margin-bottom:8px;animation:spinIn .5s ease-out}
-@keyframes spinIn{from{transform:rotate(-180deg) scale(0)}to{transform:rotate(0) scale(1)}}
-.complete-text{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;letter-spacing:3px;color:var(--gold)}
-.complete-sub{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:var(--mid);margin-top:4px}
+.complete-overlay{display:none}
+
+/* ── SYSTEM TITLE BANNER ── */
+.system-banner{position:relative;z-index:10;overflow:hidden;height:36px;background:rgba(0,5,15,.98);border-bottom:1px solid rgba(0,220,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.system-banner-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.system-banner-title{position:relative;z-index:2;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:6px;color:#fff;text-shadow:0 0 10px rgba(0,229,255,.9),0 0 20px rgba(0,180,255,.5);pointer-events:none}
+.notif{position:fixed;top:0;left:0;right:0;z-index:250;pointer-events:none;opacity:0;transition:opacity .3s ease;background:transparent}
+.notif.show{opacity:1}
+.notif.hide{opacity:0}
+.notif-inner{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 0;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-shadow:0 0 10px var(--accent)}
 
 /* ── OVERVIEW GRID ── */
 .ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -399,24 +402,24 @@ body::after{
 
 <canvas id="bgCanvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
 <div class="lflash" id="lflash"></div>
-<div class="notif" id="notif"></div>
-<div class="complete-overlay" id="cOverlay">
-  <div class="complete-box">
-    <div class="complete-icon">⚡</div>
-    <div class="complete-text">QUEST COMPLETE</div>
-    <div class="complete-sub" id="cOverlaySub">+XP EARNED</div>
-  </div>
+<div class="notif" id="notif"><div class="notif-inner" id="notifInner"></div></div>
+<div class="complete-overlay" id="cOverlay"></div>
+
+<!-- SYSTEM TITLE BANNER -->
+<div class="system-banner">
+  <canvas class="system-banner-canvas" id="bannerCanvas"></canvas>
+  <div class="system-banner-title">THE SYSTEM</div>
 </div>
 
-<!-- HEADER -->
-<div class="hdr">
+<!-- HEADER -->\n<div class="hdr">
   <div class="hdr-top">
     <div class="logo-block">
-      <div class="logo-system">THE SYSTEM</div>
       <div class="logo-player">
         <span class="player-label">PLAYER:</span>
         <span class="player-name" id="playerName" onclick="startEditName()">—</span>
         <input class="player-name-input" id="playerNameInput" maxlength="20" placeholder="ENTER NAME" onblur="savePlayerName()" onkeydown="if(event.key==='Enter')savePlayerName()"/>
+        <span class="player-label" style="margin-left:8px">XP:</span>
+        <span class="player-totalxp" id="playerTotalXP">0</span>
       </div>
     </div>
     <div class="date-nav">
@@ -701,6 +704,21 @@ function renderStats(){
   const xpPct=xp.total?Math.round(xp.earned/xp.total*100):0;
   document.getElementById('xpVal').textContent=`${xp.earned} / ${xp.total} XP`;
   document.getElementById('xpFill').style.width=xpPct+'%';
+
+  // Total XP across all days
+  let totalXP=0;
+  Object.values(dayData).forEach(d=>{
+    (d.quests||[]).forEach(q=>{
+      if(q.completed) totalXP+=XP_MAP[q.pri||'normal']||10;
+      // count subtask XP
+      (q.subtasks||[]).forEach(s=>{
+        if(s.completed) totalXP+=5;
+        (s.subtasks||[]).forEach(ss=>{if(ss.completed)totalXP+=5;});
+      });
+    });
+  });
+  const el=document.getElementById('playerTotalXP');
+  if(el) el.textContent=totalXP.toLocaleString();
 }
 
 // ─── TABS ───
@@ -2278,10 +2296,7 @@ function removeCat(cat){
 
 // ─── COMPLETE OVERLAY ───
 function showCompleteOverlay(sub){
-  const ov=document.getElementById('cOverlay');
-  document.getElementById('cOverlaySub').textContent=sub||'+XP EARNED';
-  ov.classList.add('show');
-  setTimeout(()=>ov.classList.remove('show'),1800);
+  showNotif('⚡ QUEST COMPLETE — '+(sub||'+XP EARNED'));
 }
 
 // ─── UTILS ───
@@ -2289,7 +2304,8 @@ function doFlash(){const e=document.getElementById('lflash');e.classList.add('sh
 let notifTimer = null;
 function showNotif(msg){
   const e=document.getElementById('notif');
-  e.textContent=msg;
+  const inner=document.getElementById('notifInner');
+  inner.textContent=msg;
   e.classList.remove('hide');
   e.classList.add('show');
   clearTimeout(notifTimer);
@@ -2338,6 +2354,73 @@ function savePlayerName(){
   }
   resize();
   window.addEventListener('resize', resize);
+
+// ─── BANNER CIRCUIT ANIMATION ───
+(function(){
+  const bc = document.getElementById('bannerCanvas');
+  if(!bc) return;
+  const bx = bc.getContext('2d');
+  let bW, bH, bt=0;
+  function bResize(){bW=bc.width=bc.offsetWidth;bH=bc.height=bc.offsetHeight;}
+  bResize();
+  window.addEventListener('resize',bResize);
+
+  // Generate circuit nodes
+  const nodes=[];
+  for(let i=0;i<18;i++) nodes.push({x:Math.random(),speed:0.0002+Math.random()*0.0003,phase:Math.random()*Math.PI*2});
+
+  function bDraw(){
+    bx.clearRect(0,0,bW,bH);
+    bt+=0.012;
+
+    // Moving horizontal circuit lines
+    for(let i=0;i<4;i++){
+      const y=bH*(0.2+i*0.2);
+      const alpha=0.12+0.06*Math.sin(bt+i);
+      bx.strokeStyle=`rgba(0,200,255,${alpha})`;
+      bx.lineWidth=0.5;
+      bx.beginPath();
+      bx.moveTo(0,y);
+      bx.lineTo(bW,y);
+      bx.stroke();
+    }
+
+    // Moving circuit dots/nodes
+    nodes.forEach((n,i)=>{
+      n.x=(n.x+n.speed)%1.1;
+      if(n.x>1.05) n.x=-0.05;
+      const x=n.x*bW;
+      const y=bH*(0.15+((i%4)*0.2));
+      const a=0.3+0.3*Math.sin(bt*2+n.phase);
+      bx.fillStyle=`rgba(0,220,255,${a})`;
+      bx.beginPath();
+      bx.arc(x,y,1.5,0,Math.PI*2);
+      bx.fill();
+
+      // Occasional vertical ticks
+      if(i%3===0){
+        bx.strokeStyle=`rgba(0,200,255,${a*0.5})`;
+        bx.lineWidth=0.5;
+        bx.beginPath();
+        bx.moveTo(x,y-4);
+        bx.lineTo(x,y+4);
+        bx.stroke();
+      }
+    });
+
+    // Scan line sweep
+    const scanX=((bt*0.08)%1.2-0.1)*bW;
+    const sg=bx.createLinearGradient(scanX-20,0,scanX+20,0);
+    sg.addColorStop(0,'rgba(0,200,255,0)');
+    sg.addColorStop(0.5,'rgba(0,200,255,0.12)');
+    sg.addColorStop(1,'rgba(0,200,255,0)');
+    bx.fillStyle=sg;
+    bx.fillRect(scanX-20,0,40,bH);
+
+    requestAnimationFrame(bDraw);
+  }
+  bDraw();
+})();
 
   // Energy orbs that drift slowly
   const orbs = Array.from({length:5}, (_, i) => ({
