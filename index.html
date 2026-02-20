@@ -3222,7 +3222,9 @@ async function initApp(){
     }
 
     S.currentDate = todayStr(); // always snap to today on open
-    carryLockedQuests(getPrevDay(S.currentDate), S.currentDate);
+    const _prev = new Date(); _prev.setDate(_prev.getDate()-1);
+    const _prevStr = _prev.toISOString().split('T')[0];
+    carryLockedQuests(_prevStr, S.currentDate);
     getDay(S.currentDate);
     render();
     fbLoaded = true; // NOW safe to save
