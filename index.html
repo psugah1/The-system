@@ -2077,7 +2077,6 @@ function toggleChecklist(qid,sid){
 }
 
 function toggleSub(qid){
-  // Add a blank subtask directly - wrap will appear automatically since subtasks.length > 0
   pushUndo();
   const day=getDay(S.currentDate);
   const q=day.quests.find(q=>String(q.id)===String(qid));
@@ -2085,17 +2084,17 @@ function toggleSub(qid){
   if(!q.subtasks)q.subtasks=[];
   const newSub={id:Date.now(),text:'',done:false,subtasks:[]};
   q.subtasks.push(newSub);
+  // Immediately put new subtask into edit mode so user can type right away
+  S.editingSub=String(newSub.id);
   saveAll();
-  // Rebuild or create sub-wrap
   const qwrap=document.querySelector(`.q-wrap[data-id="${qid}"]`);
   if(!qwrap)return;
   const existing=qwrap.querySelector('.sub-wrap');
   if(existing) existing.remove();
   qwrap.appendChild(buildSubWrap(q));
-  // Focus the new input
   setTimeout(()=>{
-    const inputs=qwrap.querySelectorAll('.sub-inp');
-    if(inputs.length) inputs[inputs.length-1].focus();
+    const inp=qwrap.querySelector('.sub-edit-inp');
+    if(inp){inp.focus();inp.select();}
   },50);
 }
 
