@@ -375,6 +375,10 @@ body::after{
 /* ── COMPLETE FLASH ── */
 .complete-overlay{display:none}
 
+/* ── COLLAPSE ALL BTN ── */
+.collapse-all-btn{display:block;width:100%;margin-top:8px;padding:7px;background:transparent;border:1px solid rgba(0,180,255,.15);border-radius:4px;color:rgba(0,180,255,.4);font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-align:center}
+.collapse-all-btn:hover{border-color:rgba(0,180,255,.4);color:rgba(0,180,255,.7)}
+
 /* ── SYSTEM TITLE BANNER ── */
 .system-banner{position:relative;z-index:10;overflow:hidden;height:36px;background:rgba(0,5,15,.98);border-bottom:1px solid rgba(0,220,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .system-banner-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -499,6 +503,8 @@ body::after{
         <span class="rank-label">RANK</span>
         <div class="rank-badge rank-e" id="rankBadge">E</div>
         <span class="rank-label" id="rankNextXP" style="margin-left:2px"></span>
+        <span class="rank-label" style="margin-left:10px">STREAK</span>
+        <span class="player-totalxp" id="streakVal" style="color:#ff6600;text-shadow:0 0 8px rgba(255,100,0,.6)">—</span>
       </div>
     </div>
     <div class="date-nav">
@@ -508,6 +514,7 @@ body::after{
         <div class="ds" id="dateSub">—</div>
       </div>
       <button class="dnbtn" id="btnNext" onclick="shiftDay(1)">›</button>
+      <button class="dnbtn today-btn" id="btnToday" onclick="goToday()" title="Go to today" style="font-size:9px;letter-spacing:1px;width:auto;padding:0 6px;font-family:Orbitron,monospace;display:none">NOW</button>
     </div>
   </div>
   <div class="stats-row">
@@ -818,6 +825,9 @@ function renderStats(){
   const totalXP=calcTotalXP();
   const el=document.getElementById('playerTotalXP');
   if(el) el.textContent=totalXP.toLocaleString();
+  const streak=calcStreak();
+  const sel=document.getElementById('streakVal');
+  if(sel) sel.textContent=streak>0?`🔥${streak}`:'—';
   const rankData=getRank(totalXP);
   const rb=document.getElementById('rankBadge');
   if(rb){rb.textContent=rankData.rank;rb.className='rank-badge '+rankData.cls;}
@@ -876,6 +886,8 @@ function renderMain(){
 function updateDateDisplay(){
   document.getElementById('dateMain').textContent=dateLabel(S.currentDate);
   document.getElementById('dateSub').textContent=dateSub(S.currentDate);
+  const todayBtn=document.getElementById('btnToday');
+  if(todayBtn) todayBtn.style.display=S.currentDate!==todayStr()?'flex':'none';
 }
 
 // ─── LIST VIEW ───
@@ -886,6 +898,16 @@ function renderList(container){
   cats.forEach(cat=>{
     container.appendChild(buildCatSection(cat));
   });
+
+  // Add collapse all / expand all button at bottom if multiple cats
+  if(cats.length > 1){
+    const collapseBtn = document.createElement('button');
+    collapseBtn.className = 'collapse-all-btn';
+    collapseBtn.id = 'collapseAllBtn';
+    collapseBtn.textContent = '▲ COLLAPSE ALL';
+    collapseBtn.onclick = toggleCollapseAll;
+    container.appendChild(collapseBtn);
+  }
 }
 
 function buildTopInput(){
@@ -893,7 +915,7 @@ function buildTopInput(){
   p.className='inp-panel';
   p.innerHTML=`
     <div class="inp-row">
-      <input class="qi" id="topQI" placeholder="Enter quest..." maxlength="120"/>
+      <input class="qi" id="topQI" placeholder="Enter quest..." maxlength="120" title="Select a tab first, then type your quest and hit Enter"/>
       <button class="badd" onclick="addQuestTop()">+ ADD</button>
     </div>
     <div class="inp-opts" id="topOpts"></div>
@@ -1189,6 +1211,45 @@ function renderHistory(container){
 }
 
 // ─── DATE NAV ───
+// ─── GO TO TODAY ───
+function goToday(){
+  S.currentDate = todayStr();
+  render();
+  document.getElementById('btnToday').style.display='none';
+}
+
+// ─── COLLAPSE ALL / EXPAND ALL ───
+let allCollapsed = false;
+function toggleCollapseAll(){
+  allCollapsed = !allCollapsed;
+  document.querySelectorAll('.cat-sec').forEach(sec=>{
+    if(allCollapsed) sec.classList.add('collapsed');
+    else sec.classList.remove('collapsed');
+  });
+  const btn = document.getElementById('collapseAllBtn');
+  if(btn) btn.textContent = allCollapsed ? '▼ EXPAND ALL' : '▲ COLLAPSE ALL';
+}
+
+// ─── STREAK CALCULATION ───
+function calcStreak(){
+  const today = todayStr();
+  let streak = 0;
+  let d = new Date();
+  // check yesterday first (today may not be complete yet)
+  d.setDate(d.getDate()-1);
+  while(true){
+    const ds = d.toISOString().split('T')[0];
+    const day = dayData[ds];
+    if(!day || !day.quests || day.quests.length === 0) break;
+    const allDone = day.quests.every(q=>q.completed||q.locked);
+    if(!allDone) break;
+    streak++;
+    d.setDate(d.getDate()-1);
+    if(streak > 365) break;
+  }
+  return streak;
+}
+
 function shiftDay(delta){
   const parts=S.currentDate.split('-').map(Number);
   const d=new Date(parts[0],parts[1]-1,parts[2]);
