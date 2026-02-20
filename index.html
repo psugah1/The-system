@@ -669,7 +669,7 @@ let S={
 let dayData = JSON.parse(localStorage.getItem('sl3_days')||'{}');
 
 // ─── UTILS ───
-function todayStr(){const d=new Date();return d.toISOString().split('T')[0]}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function uid(){return Date.now()+Math.random()}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function dateLabel(s){
@@ -1513,7 +1513,7 @@ function calcStreak(){
   // check yesterday first (today may not be complete yet)
   d.setDate(d.getDate()-1);
   while(true){
-    const ds = d.toISOString().split('T')[0];
+    const ds = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const day = dayData[ds];
     if(!day || !day.quests || day.quests.length === 0) break;
     const allDone = day.quests.every(q=>q.completed||q.locked);
@@ -3223,7 +3223,7 @@ async function initApp(){
 
     S.currentDate = todayStr(); // always snap to today on open
     const _prev = new Date(); _prev.setDate(_prev.getDate()-1);
-    const _prevStr = _prev.toISOString().split('T')[0];
+    const _prevStr = _prev.getFullYear()+'-'+String(_prev.getMonth()+1).padStart(2,'0')+'-'+String(_prev.getDate()).padStart(2,'0');
     carryLockedQuests(_prevStr, S.currentDate);
     getDay(S.currentDate);
     render();
