@@ -1768,23 +1768,14 @@ function toggleQ(id){
     doFlash();
   }
 
-  // update without full re-render
-  const row=document.querySelector(`.qi-row[data-id="${id}"]`);
-  if(row){
-    row.classList.toggle('done',q.completed);
-    const chkmark=row.querySelector('.chkmark');
-    if(chkmark){chkmark.style.opacity=q.completed?'1':'0';chkmark.style.transform=q.completed?'scale(1)':'scale(0)'}
-    const chk=row.querySelector('.qchk');
-    if(chk){chk.style.background=q.completed?'var(--green)':'';chk.style.borderColor=q.completed?'var(--green)':''}
-    const txt=row.querySelector('.qtxt');
-    if(txt){txt.style.textDecoration=q.completed?'line-through':'';txt.style.color=q.completed?'var(--dim)':''}
-    const acts=row.querySelector('.qacts');
-    if(acts&&S.editing!==String(id)){
-      let h=``;
-      if(!q.completed)h+=`<button class="qbtn qbtn-edit" onclick="startEdit('${id}')">✏</button>`;
-      h+=`<button class="qbtn qbtn-sub" onclick="toggleSub('${id}')" title="Subtasks">+</button>`;
-      h+=`<button class="qbtn qbtn-del" onclick="delQ('${id}')">✕</button>`;
-      acts.innerHTML=h;
+  // Rebuild full row to ensure ••• menu and all buttons stay correct after tick/untick
+  const qwrapEl=document.querySelector(`.q-wrap[data-id="${id}"]`);
+  if(qwrapEl){
+    const oldRow=qwrapEl.querySelector('.qi-row');
+    if(oldRow){
+      const newRow=buildQuestRow(q);
+      qwrapEl.replaceChild(newRow,oldRow);
+      setupDragHandle(newRow,q);
     }
   }
 
@@ -2156,10 +2147,13 @@ function toggleSub(qid){
 
 function buildDueTag(dateStr){
   if(!dateStr) return '';
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const due = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr+'T00:00:00');
-  const diff = Math.round((due-today)/(1000*60*60*24));
+  const now = new Date();
+  const todayDate = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const dueDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  // Compare as date strings (local time safe)
+  const todayMs = new Date(todayDate+'T00:00:00').getTime();
+  const dueMs = new Date(dueDate+'T00:00:00').getTime();
+  const diff = Math.round((dueMs - todayMs)/(1000*60*60*24));
   if(diff<0) return `<span class="due-tag due-over">OVERDUE</span>`;
   if(diff===0) return `<span class="due-tag due-today">DUE TODAY</span>`;
   if(diff===1) return `<span class="due-tag due-close">1 DAY</span>`;
