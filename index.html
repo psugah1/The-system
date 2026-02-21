@@ -435,8 +435,8 @@ body::after{
 .subsub-add{margin-left:0}
 .sub-dh{cursor:grab;color:var(--dim);font-size:13px;padding:0 4px;letter-spacing:-2px;user-select:none;flex-shrink:0}
 .sub-dh:active{cursor:grabbing;color:var(--accent)}
-.sub-item{display:flex;align-items:center;gap:4px;padding:6px 8px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s;position:relative;min-width:0;overflow:hidden}
-.sub-edit-row{display:flex;align-items:center;gap:3px;flex:1;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.sub-item{display:flex;align-items:center;gap:4px;padding:6px 8px;background:rgba(4,12,28,.85);border:1px solid rgba(0,160,255,.18);border-radius:3px;margin-bottom:3px;transition:opacity .3s;position:relative;min-width:0}
+.sub-edit-row{display:flex;align-items:center;gap:3px;flex:1;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .sub-edit-row::-webkit-scrollbar{display:none}
 .sub-item.done{opacity:.4}
 .sub-chk{width:16px;height:16px;border:1.5px solid var(--dim);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s;font-size:9px;font-weight:900;color:var(--bg)}
@@ -2067,6 +2067,7 @@ function buildSubWrap(q){
         <button class="cpbtn sel-n" data-subpri="${subAddId}" data-val="normal" onclick="setSubPriById('${subAddId}','normal')">N</button>
         <button class="cpbtn" data-subpri="${subAddId}" data-val="hard" onclick="setSubPriById('${subAddId}','hard')">H</button>
         <button class="cpbtn" data-subpri="${subAddId}" data-val="urgent" onclick="setSubPriById('${subAddId}','urgent')">U</button>
+        <button class="cpbtn" data-subpri="${subAddId}" data-val="boss" onclick="setSubPriById('${subAddId}','boss')">💀</button>
       </div>
       <button class="sub-add-btn" onclick="addSubtask('${qid}')">+ SUB</button>
     `;
