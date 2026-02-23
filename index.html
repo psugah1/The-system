@@ -1642,21 +1642,31 @@ function carryLockedQuests(fromDate, toDate, syncDone){
               else { tx.done=false; }
             }
           });
+          // Add subsubs from source not yet in dest (skip tombstoned)
+          const _qKey=(srcQ.originalId)||((srcQ.text||'')+'|'+(srcQ.cat||''));
           (srcS.subsubs||[]).forEach(sx=>{
-            if(!todaySS.find(tx=>tx.text===sx.text)) todaySS.push({...sx,id:uid()});
+            const ssDelKey=_qKey+'::sub::'+srcS.text+'::ss::'+sx.text;
+            if(!todaySS.find(tx=>tx.text===sx.text) && !deletedKeys.has(ssDelKey)){
+              todaySS.push({...sx,id:uid()});
+            }
           });
           ts.subsubs=todaySS;
         }
       });
 
-      // Add subtasks from source not yet in dest
+      // Add subtasks from source not yet in dest (skip tombstoned ones)
+      const qKey=(srcQ.originalId)||((srcQ.text||'')+'|'+(srcQ.cat||''));
       (srcQ.subtasks||[]).forEach(srcS=>{
-        if(!todaySubs.find(ts=>ts.text===srcS.text)){
+        const subDelKey=qKey+'::sub::'+srcS.text;
+        if(!todaySubs.find(ts=>ts.text===srcS.text) && !deletedKeys.has(subDelKey)){
+          // Filter out tombstoned subsubs
+          const subsubs=(srcS.subsubs||[]).filter(sx=>{
+            const ssDelKey=qKey+'::sub::'+srcS.text+'::ss::'+sx.text;
+            return !deletedKeys.has(ssDelKey);
+          }).map(x=>({...x,id:uid(),done:persistDone(srcQ.cat)?x.done:false}));
           todaySubs.push({...srcS,id:uid(),
             done:persistDone(srcQ.cat)?srcS.done:false,
-            subsubs:(srcS.subsubs||[]).map(x=>({...x,id:uid(),
-              done:persistDone(srcQ.cat)?x.done:false
-            }))
+            subsubs
           });
         }
       });
@@ -2552,13 +2562,13 @@ function toggleSub1(qid,sid){
   if(!q)return;
   const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
   if(!s)return;
-  pushUndo();s.done=!s.done;saveAll();
-  const row=document.querySelector(`.sub-item[data-sid="${sid}"]`);
-  if(row){
-    row.classList.toggle('done',s.done);
-    const chk=row.querySelector('.sub-chk');if(chk)chk.textContent=s.done?'✓':'';
-    const txt=row.querySelector('.sub-txt');if(txt){txt.style.textDecoration=s.done?'line-through':'';txt.style.color=s.done?'var(--dim)':'';}
-  }
+  pushUndo();
+  s.done=!s.done;
+  // When ticking a subtask, cascade to all its subsubs
+  if(s.subsubs&&s.subsubs.length) s.subsubs.forEach(x=>{ x.done=s.done; });
+  saveAll();
+  // Rebuild the whole subtask panel so subsubs update visually
+  rebuildSubWrap(qid);
   if(s.done)showNotif(`+${SUBTASK_XP} XP`);
   renderStats();updateCatXPBar(q.cat);
 }
@@ -2590,9 +2600,17 @@ function delSub1(qid,sid){
   const day=getDay(S.currentDate);
   const q=day.quests.find(q=>String(q.id)===String(qid));
   if(!q)return;
+  const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+  if(s){
+    // Tombstone so carry never recreates this subtask
+    const qKey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
+    const subDelKey=qKey+'::sub::'+s.text;
+    if(!dayData[S.currentDate].deleted) dayData[S.currentDate].deleted=[];
+    if(!dayData[S.currentDate].deleted.includes(subDelKey))
+      dayData[S.currentDate].deleted.push(subDelKey);
+  }
   q.subtasks=(q.subtasks||[]).filter(s=>String(s.id)!==String(sid));
   saveAll();
-  // If no subtasks left, remove the sub-wrap entirely
   if(q.subtasks.length===0){
     const qwrap=document.querySelector(`.q-wrap[data-id="${qid}"]`);
     if(qwrap){const sw=qwrap.querySelector('.sub-wrap');if(sw)sw.remove();}
@@ -2612,6 +2630,15 @@ function delSub2(qid,sid,xid){
   if(!q)return;
   const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
   if(!s)return;
+  const x=(s.subsubs||[]).find(x=>String(x.id)===String(xid));
+  if(x){
+    // Tombstone so carry never recreates this subsub
+    const qKey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
+    const ssDelKey=qKey+'::sub::'+s.text+'::ss::'+x.text;
+    if(!dayData[S.currentDate].deleted) dayData[S.currentDate].deleted=[];
+    if(!dayData[S.currentDate].deleted.includes(ssDelKey))
+      dayData[S.currentDate].deleted.push(ssDelKey);
+  }
   s.subsubs=(s.subsubs||[]).filter(x=>String(x.id)!==String(xid));
   saveAll();rebuildSubWrap(qid);renderStats();
 }
