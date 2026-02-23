@@ -1621,51 +1621,44 @@ function carryLockedQuests(fromDate, toDate, syncDone){
       // Step 3: add any subtasks from source that don't exist in today yet
       const todaySubs = already.subtasks || [];
 
-      // Update existing subtasks from source - source has authoritative done/metadata state
+      // Update existing subtasks from source
       todaySubs.forEach(ts=>{
         const srcS=(srcQ.subtasks||[]).find(ss=>ss.text===ts.text);
         if(srcS){
           ts.pri=srcS.pri;
           ts.recurring=srcS.recurring;
-          // Source done state is authoritative (user ticked it on source day)
-          if(syncDone || persistDone(srcQ.cat)) ts.done = srcS.recurring ? false : srcS.done;
           if(!ts.dueDate && srcS.dueDate) ts.dueDate=srcS.dueDate;
           if(!ts.payStatus && srcS.payStatus) ts.payStatus=srcS.payStatus;
-          // Update subsubs from source
+          // PERSIST: copy done only when navigating forward (syncDone=true), keep dest on app open
+          // RESET: always force unticked
+          if(persistDone(srcQ.cat)){ if(syncDone) ts.done=srcS.done; }
+          else { ts.done=false; }
           const todaySS=ts.subsubs||[];
           todaySS.forEach(tx=>{
             const srcX=(srcS.subsubs||[]).find(sx=>sx.text===tx.text);
             if(srcX){
               tx.pri=srcX.pri;
-              // Source done state is authoritative for subsubs too
-              if(syncDone || persistDone(srcQ.cat)) tx.done = srcX.recurring ? false : srcX.done;
+              if(persistDone(srcQ.cat)){ if(syncDone) tx.done=srcX.done; }
+              else { tx.done=false; }
             }
           });
-          // Add subsubs from source that aren't in dest yet
           (srcS.subsubs||[]).forEach(sx=>{
-            if(!todaySS.find(tx=>tx.text===sx.text)){
-              todaySS.push({...sx, id:uid()});
-            }
+            if(!todaySS.find(tx=>tx.text===sx.text)) todaySS.push({...sx,id:uid()});
           });
           ts.subsubs=todaySS;
         }
       });
 
-      // Add subtasks from source that don't exist in today yet
+      // Add subtasks from source not yet in dest
       (srcQ.subtasks||[]).forEach(srcS=>{
         if(!todaySubs.find(ts=>ts.text===srcS.text)){
-          todaySubs.push({
-            ...srcS, id:uid(),
-            done:srcS.recurring?false:srcS.done,
-            subsubs:(srcS.subsubs||[]).map(x=>({...x,id:uid()}))
+          todaySubs.push({...srcS,id:uid(),
+            done:persistDone(srcQ.cat)?srcS.done:false,
+            subsubs:(srcS.subsubs||[]).map(x=>({...x,id:uid(),
+              done:persistDone(srcQ.cat)?x.done:false
+            }))
           });
         }
-      });
-
-      // Reset recurring subtasks to undone, keep all others as-is (ticked stays ticked)
-      todaySubs.forEach(ts=>{
-        if(ts.recurring) ts.done=false;
-        (ts.subsubs||[]).forEach(tx=>{ if(tx.recurring) tx.done=false; });
       });
       already.subtasks=todaySubs;
     } else {
