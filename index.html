@@ -2032,7 +2032,7 @@ function buildSubWrap(q){
       const ssKey=sid+'_ss';
       const ss=s.subsubs||[];
       
-      if(S.ssShowing[sid]){
+      if(S.ssShowing[sid] || ss.length > 0){
         const ssCollapsed=S.subCollapsed[ssKey]||false;
         const ssDone=ss.filter(x=>x.done).length;
 
