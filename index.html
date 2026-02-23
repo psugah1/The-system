@@ -367,6 +367,7 @@ body::after{
 .qacts-overflow.open{opacity:1;pointer-events:all}
 .qbtn-more{border-color:rgba(0,180,255,.25);color:var(--mid);letter-spacing:1px;font-size:10px;width:26px}
 .qbtn-more:active,.qbtn-more.open{border-color:rgba(0,180,255,.6);color:var(--accent);background:rgba(0,180,255,.1)}
+.qbtn-more.locked{border-color:rgba(255,215,0,.6);color:#ffd700;box-shadow:0 0 6px rgba(255,215,0,.3)}
 .lock-glow-icon{font-size:12px;animation:lockIconGlow 2s ease-in-out infinite;display:inline-block}
 @keyframes lockIconGlow{
   0%,100%{filter:drop-shadow(0 0 2px rgba(255,215,0,.5));opacity:.8}
@@ -404,9 +405,9 @@ body::after{
 .qbtn{width:26px;height:26px;border-radius:3px;border:1px solid transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;background:transparent;transition:all .2s}
 .qbtn-edit{border-color:rgba(0,170,255,.25);color:var(--blue)}
 .qbtn-edit:active{background:rgba(0,170,255,.2)}
-.qbtn-lock{border-color:rgba(255,215,0,.15);color:var(--dim);font-size:13px}
-.qbtn-lock.locked{border-color:rgba(255,215,0,.5);background:rgba(255,215,0,.08)}
-.qbtn-lock:active{background:rgba(255,215,0,.15)}
+.qbtn-lock{border-color:rgba(255,215,0,.2);color:rgba(255,215,0,.3);font-size:13px}
+.qbtn-lock.locked{border-color:rgba(255,215,0,.8);background:rgba(255,215,0,.12);color:#ffd700;box-shadow:0 0 6px rgba(255,215,0,.3)}
+.qbtn-lock:active{background:rgba(255,215,0,.2)}
 .qbtn-sub{border-color:rgba(0,255,136,.3);color:var(--green);font-size:16px;font-weight:700;line-height:1}
 .qbtn-sub:active{background:rgba(0,255,136,.15)}
 .qbtn-dupe{border-color:rgba(0,212,255,.2);color:var(--accent)}
@@ -1243,7 +1244,7 @@ function buildQuestRow(q){
     innerHtml+=`<button class="cpbtn ${pri==='urgent'?'sel-u':''}" onclick="setQuestPri('${q.id}','urgent')">U</button>`;
     innerHtml+=`<button class="cpbtn ${pri==='boss'?'sel-b':''}" onclick="setQuestPri('${q.id}','boss')">💀</button>`;
   } else {
-    // Collapsed: show lock (always visible as key action), then ... menu
+    // ••• overflow menu
     innerHtml+=`<div class="qacts-overflow" id="qo-${q.id}">`;
     if(!q.completed) innerHtml+=`<button class="qbtn qbtn-edit" onclick="startEdit('${q.id}')">✏</button>`;
     innerHtml+=`<button class="qbtn qbtn-sub" onclick="toggleSub('${q.id}')" title="Add subtask">+</button>`;
@@ -1253,7 +1254,7 @@ function buildQuestRow(q){
     innerHtml+=`<button class="qbtn qbtn-dupe" onclick="dupeQ('${q.id}')" title="Duplicate">⧉</button>`;
     innerHtml+=`<button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>`;
     innerHtml+=`</div>`;
-    innerHtml+=`<button class="qbtn qbtn-more" onclick="toggleQActsMenu('${q.id}',this)">•••</button>`;
+    innerHtml+=`<button class="qbtn qbtn-more ${q.locked?'locked':''}" onclick="toggleQActsMenu('${q.id}',this)">•••</button>`;
   }
   innerHtml+=`</div>`;
 
@@ -1613,11 +1614,12 @@ function carryLockedQuests(fromDate, toDate){
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
         // subsubs: filter out done ones (unless recurring), keep existing tick state if present
         const buildSubsubs=(srcSubs, existingSubs)=>{
-          return (srcSubs||[]).filter(x=>x.recurring||!x.done).map(x=>{
+          // Always carry ALL subsubs - reset done to false each day
+          return (srcSubs||[]).map(x=>{
             const ex=(existingSubs||[]).find(e=>e.text===x.text);
             return ex
-              ? {...ex, pri:x.pri, recurring:x.recurring, done:x.recurring?false:ex.done}
-              : {...x, id:uid(), done:x.recurring?false:x.done};
+              ? {...ex, pri:x.pri, done:false}
+              : {...x, id:uid(), done:false};
           });
         };
         if(existing){
@@ -1652,9 +1654,9 @@ function carryLockedQuests(fromDate, toDate){
           dueDate:s.dueDate||null,
           payStatus:s.payStatus||null,
           done:s.recurring?false:s.done,
-          subsubs:(s.subsubs||[]).filter(x=>x.recurring||!x.done).map(x=>({
+          subsubs:(s.subsubs||[]).map(x=>({
             ...x, id:uid(),
-            done:x.recurring?false:x.done,
+            done:false,
             dueDate:x.dueDate||null,
             payStatus:x.payStatus||null
           }))
@@ -2008,9 +2010,13 @@ function buildSubItemRow(s, opts){
           <button class="sub-edit-btn" onclick="${opts.onEdit}">✏</button>
           ${ssToggleBtn}
           ${dupeBtn}
-          <button class="sub-recur-btn ${s.recurring?'active':''}" onclick="${opts.onRecur}" title="${s.recurring?'Locked - carries forward unticked':'Unlocked - stays ticked when done'}">🔒</button>
-          <button class="sub-edit-btn ${s.dueDate?'has-due':''}" onclick="openDuePicker('${opts.qid}','sub',event,'${s.id}')" title="Set due date">🕐</button>
-          <button class="sub-edit-btn ${s.payStatus?'has-due':''}" onclick="openPayPicker('${opts.qid}-${s.id}','sub',event,'${opts.qid}','${s.id}')" title="Payment" style="font-weight:700">$</button>
+          <button class="sub-recur-btn ${s.recurring?'active':''}" onclick="${opts.onRecur}" title="${s.recurring?'Locked - carries forward':'Unlocked'}">🔒</button>
+          ${opts.depth===1
+            ? `<button class="sub-edit-btn ${s.dueDate?'has-due':''}" onclick="openDuePicker('${opts.qid}','sub',event,'${s.id}')" title="Due date">🕐</button>
+               <button class="sub-edit-btn ${s.payStatus?'has-due':''}" onclick="openPayPicker('${opts.qid}-${s.id}','sub',event,'${opts.qid}','${s.id}')" title="Payment" style="font-weight:700">$</button>`
+            : `<button class="sub-edit-btn ${s.dueDate?'has-due':''}" onclick="openDuePicker('${opts.qid}','subsub',event,'${opts.priSid}','${s.id}')" title="Due date">🕐</button>
+               <button class="sub-edit-btn ${s.payStatus?'has-due':''}" onclick="openPayPicker('${opts.qid}-${opts.priSid}-${s.id}','subsub',event,'${opts.qid}','${opts.priSid}','${s.id}')" title="Payment" style="font-weight:700">$</button>`
+          }
           <button class="sub-del" onclick="${opts.onDel}">✕</button>
         </div>
         <button class="sub-more-btn" onclick="toggleSubMenu('${subMenuId}',this)">•••</button>
@@ -2089,6 +2095,7 @@ function buildSubWrap(q){
               onToggle:`toggleSub2('${qid}','${sid}','${xid}')`,
               onEdit:`startSubSubEdit('${qid}','${sid}','${xid}')`,
               onSave:`saveSubSubEdit('${qid}','${sid}','${xid}')`,
+              onRecur:`toggleSubSubRecur('${qid}','${sid}','${xid}')`,
               priQid:qid, priSid:sid, priDepth:'2', priXid:xid,
               onDel:`delSub2('${qid}','${sid}','${xid}')`
             });
@@ -2222,7 +2229,7 @@ function buildPayTag(status, id, type, qid, sid){
   return '';
 }
 
-function openPayPicker(id, type, event, qid, sid){
+function openPayPicker(id, type, event, qid, sid, xid){
   event.stopPropagation();
   const existing=document.getElementById('payPicker');
   if(existing){existing.remove();return;}
@@ -2234,9 +2241,9 @@ function openPayPicker(id, type, event, qid, sid){
   modal.style.top=(rect.bottom+6)+'px';
   modal.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
   modal.innerHTML=`
-    <div class="pay-option pay-option-full" onclick="setPayStatus('${id}','${type}','full','${qid||''}','${sid||''}')">💰 PAID IN FULL</div>
-    <div class="pay-option pay-option-deposit" onclick="setPayStatus('${id}','${type}','deposit','${qid||''}','${sid||''}')">💵 50% DEPOSIT</div>
-    <div class="pay-option pay-option-none" onclick="setPayStatus('${id}','${type}',null,'${qid||''}','${sid||''}')">✕ CLEAR</div>
+    <div class="pay-option pay-option-full" onclick="setPayStatus('${id}','${type}','full','${qid||''}','${sid||''}','${xid||''}')">💰 PAID IN FULL</div>
+    <div class="pay-option pay-option-deposit" onclick="setPayStatus('${id}','${type}','deposit','${qid||''}','${sid||''}','${xid||''}')">💵 50% DEPOSIT</div>
+    <div class="pay-option pay-option-none" onclick="setPayStatus('${id}','${type}',null,'${qid||''}','${sid||''}','${xid||''}')">✕ CLEAR</div>
   `;
   document.body.appendChild(modal);
   setTimeout(()=>{
@@ -2246,7 +2253,7 @@ function openPayPicker(id, type, event, qid, sid){
   },50);
 }
 
-function setPayStatus(id, type, status, qid, sid){
+function setPayStatus(id, type, status, qid, sid, xid){
   pushUndo();
   document.getElementById('payPicker')?.remove();
   if(type==='task'){
@@ -2257,13 +2264,23 @@ function setPayStatus(id, type, status, qid, sid){
     saveAll();
     const wrap=document.querySelector(`.q-wrap[data-id="${id}"]`);
     if(wrap){const oldRow=wrap.querySelector('.qi-row');if(oldRow){const newRow=buildQuestRow(q);wrap.replaceChild(newRow,oldRow);setupDragHandle(newRow,q);}}
-  } else {
+  } else if(type==='sub'){
     const day=getDay(S.currentDate);
     const q=day.quests.find(q=>String(q.id)===String(qid));
     if(!q)return;
     const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
     if(!s)return;
     s.payStatus=status;
+    saveAll();rebuildSubWrap(qid);
+  } else if(type==='subsub'){
+    const day=getDay(S.currentDate);
+    const q=day.quests.find(q=>String(q.id)===String(qid));
+    if(!q)return;
+    const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+    if(!s)return;
+    const x=(s.subsubs||[]).find(x=>String(x.id)===String(xid));
+    if(!x)return;
+    x.payStatus=status;
     saveAll();rebuildSubWrap(qid);
   }
 }
@@ -2298,20 +2315,20 @@ function openDuePicker(id, type, event, sid){
   if(type==='task'){
     const day=getDay(S.currentDate);
     const q=day.quests.find(q=>String(q.id)===String(id));
-    if(q&&q.dueDate){
-      const parts=q.dueDate.split('T');
-      currentDate=parts[0]||'';
-      currentTime=parts[1]||'';
-    }
-  } else {
+    if(q&&q.dueDate){const parts=q.dueDate.split('T');currentDate=parts[0]||'';currentTime=parts[1]||'';}
+  } else if(type==='sub'){
     const day=getDay(S.currentDate);
     const q=day.quests.find(q=>String(q.id)===String(id));
-    if(q){
-      const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
-      if(s&&s.dueDate){
-        const parts=s.dueDate.split('T');
-        currentDate=parts[0]||'';
-        currentTime=parts[1]||'';
+    if(q){const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+      if(s&&s.dueDate){const parts=s.dueDate.split('T');currentDate=parts[0]||'';currentTime=parts[1]||'';}
+    }
+  } else if(type==='subsub'){
+    // id=qid, sid=parent subtask id, xid(passed as 5th arg to saveDuePicker via modal)
+    const day=getDay(S.currentDate);
+    const q=day.quests.find(q=>String(q.id)===String(id));
+    if(q){const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+      if(s){const x=(s.subsubs||[]).find(x=>String(x.id)===String(xid));
+        if(x&&x.dueDate){const parts=x.dueDate.split('T');currentDate=parts[0]||'';currentTime=parts[1]||'';}
       }
     }
   }
@@ -2332,8 +2349,8 @@ function openDuePicker(id, type, event, sid){
     <label>TIME (OPTIONAL)</label>
     <input type="time" id="dpTime" value="${currentTime}">
     <div class="due-picker-btns">
-      <button class="dpbtn-save" onclick="saveDuePicker('${id}','${type}','${sid||''}')">SAVE</button>
-      <button class="dpbtn-clear" onclick="clearDuePicker('${id}','${type}','${sid||''}')">CLEAR</button>
+      <button class="dpbtn-save" onclick="saveDuePicker('${id}','${type}','${sid||''}','${xid||''}')">SAVE</button>
+      <button class="dpbtn-clear" onclick="clearDuePicker('${id}','${type}','${sid||''}','${xid||''}')">CLEAR</button>
     </div>
   `;
 
@@ -2350,19 +2367,34 @@ function openDuePicker(id, type, event, sid){
   }, 50);
 }
 
-function saveDuePicker(id, type, sid){
+function saveDuePicker(id, type, sid, xid){
   const dateVal=document.getElementById('dpDate')?.value||'';
   const timeVal=document.getElementById('dpTime')?.value||'';
   const combined=dateVal?(timeVal?dateVal+'T'+timeVal:dateVal):'';
   if(type==='task') setDueDate(id, combined);
-  else setSubDueDate(id, sid, combined);
+  else if(type==='sub') setSubDueDate(id, sid, combined);
+  else if(type==='subsub') setSubSubDueDate(id, sid, xid, combined);
   document.getElementById('duePicker')?.remove();
 }
 
-function clearDuePicker(id, type, sid){
+function clearDuePicker(id, type, sid, xid){
   if(type==='task') setDueDate(id, '');
-  else setSubDueDate(id, sid, '');
+  else if(type==='sub') setSubDueDate(id, sid, '');
+  else if(type==='subsub') setSubSubDueDate(id, sid, xid, '');
   document.getElementById('duePicker')?.remove();
+}
+
+function setSubSubDueDate(qid, sid, xid, dateVal){
+  pushUndo();
+  const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(qid));
+  if(!q)return;
+  const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+  if(!s)return;
+  const x=(s.subsubs||[]).find(x=>String(x.id)===String(xid));
+  if(!x)return;
+  x.dueDate=dateVal||null;
+  saveAll();rebuildSubWrap(qid);
 }
 
 function setSubDueDate(qid, sid, dateVal){
@@ -2431,6 +2463,20 @@ function toggleSubRecur(qid,sid){
   const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
   if(!s)return;
   s.recurring=!s.recurring;
+  saveAll();
+  rebuildSubWrap(qid);
+}
+
+function toggleSubSubRecur(qid,sid,xid){
+  pushUndo();
+  const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(qid));
+  if(!q)return;
+  const s=(q.subtasks||[]).find(s=>String(s.id)===String(sid));
+  if(!s)return;
+  const x=(s.subsubs||[]).find(x=>String(x.id)===String(xid));
+  if(!x)return;
+  x.recurring=!x.recurring;
   saveAll();
   rebuildSubWrap(qid);
 }
