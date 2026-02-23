@@ -758,9 +758,9 @@ function undoAction(){
   S.cats = snap.cats;
   S.catColors = snap.catColors;
   localStorage.setItem('sl3_days', JSON.stringify(dayData));
-  localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode}));
   fbSave('data','days',dayData);
-  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode});
   const ubtn = document.getElementById('navU');
   if(ubtn) ubtn.classList.toggle('has-undo', undoStack.length > 0);
   const rbtn = document.getElementById('navR');
@@ -781,9 +781,9 @@ function redoAction(){
   S.cats = snap.cats;
   S.catColors = snap.catColors;
   localStorage.setItem('sl3_days', JSON.stringify(dayData));
-  localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  localStorage.setItem('sl3_cfg', JSON.stringify({cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode}));
   fbSave('data','days',dayData);
-  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode});
   const ubtn = document.getElementById('navU');
   if(ubtn) ubtn.classList.add('has-undo');
   const rbtn = document.getElementById('navR');
@@ -794,7 +794,7 @@ function redoAction(){
 
 function saveAll(){
   localStorage.setItem('sl3_days',JSON.stringify(dayData));
-  localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode}));
   fbSave('data','days',dayData);
   fbSave('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode});
 }
@@ -3564,7 +3564,7 @@ async function saveProfile(){
   try {
     await Promise.all([
       fbSaveImmediate('data','days',dayData),
-      fbSaveImmediate('data','cfg',{cats:S.cats,catColors:S.catColors}),
+      fbSaveImmediate('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode}),
       fbSaveImmediate('data','player',localStorage.getItem('sl3_player')||''),
       fbSaveImmediate('data','ui',{subShowing:S.subShowing,subCollapsed:S.subCollapsed,ssShowing:S.ssShowing}),
     ]);
