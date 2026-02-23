@@ -1609,7 +1609,7 @@ function carryLockedQuests(fromDate, toDate){
       if(!already.dueDate && srcQ.dueDate) already.dueDate=srcQ.dueDate;
       if(!already.payStatus && srcQ.payStatus) already.payStatus=srcQ.payStatus;
       // Sync subtasks - preserve today's dueDate/payStatus on existing subs
-      already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
+      already.subtasks=(srcQ.subtasks||[]).map(s=>{
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
         const subsubs=(s.subsubs||[]).map(x=>({...x,id:uid(),
           dueDate:x.dueDate||null,
@@ -1637,9 +1637,7 @@ function carryLockedQuests(fromDate, toDate){
         locked:true,
         dueDate:srcQ.dueDate||null,
         payStatus:srcQ.payStatus||null,
-        subtasks:(srcQ.subtasks||[]).filter(s=>{
-          return s.recurring || !s.done;
-        }).map(s=>({
+        subtasks:(srcQ.subtasks||[]).map(s=>({
           ...s,
           id:uid(),
           dueDate:s.dueDate||null,
