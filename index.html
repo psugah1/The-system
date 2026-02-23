@@ -1599,28 +1599,34 @@ function carryLockedQuests(fromDate, toDate){
   locked.forEach(srcQ=>{
     const already=dest.quests.find(dq=>dq.locked&&dq.text===srcQ.text&&dq.cat===srcQ.cat);
     if(already){
-      // Update priority in case it changed
+      // Sync all mutable fields from source
       already.pri=srcQ.pri;
-      // Also sync subtasks - carry locked ones, reset recurring, drop done one-time
+      already.dueDate=srcQ.dueDate||null;
+      already.payStatus=srcQ.payStatus||null;
+      // Sync subtasks
       already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
-        return existing ? {...existing, recurring:s.recurring, pri:s.pri} : {...s, id:uid(), done:s.recurring?false:s.done};
+        return existing
+          ? {...existing, recurring:s.recurring, pri:s.pri, dueDate:s.dueDate||null, payStatus:s.payStatus||null}
+          : {...s, id:uid(), done:s.recurring?false:s.done};
       });
     } else {
       const newQ={
         ...srcQ,
         id:uid(),
-        originalId:srcQ.originalId||String(srcQ.id), // track source for dedup
+        originalId:srcQ.originalId||String(srcQ.id),
         completed:false,
         locked:true,
+        dueDate:srcQ.dueDate||null,
+        payStatus:srcQ.payStatus||null,
         subtasks:(srcQ.subtasks||[]).filter(s=>{
           return s.recurring || !s.done;
         }).map(s=>({
           ...s,
           id:uid(),
-          dueDate: s.dueDate||null,  // preserve due date on carry
-          payStatus: s.payStatus||null, // preserve payment status
-          done: s.recurring ? false : s.done
+          dueDate:s.dueDate||null,
+          payStatus:s.payStatus||null,
+          done:s.recurring ? false : s.done
         }))
       };
       dest.quests.push(newQ);
@@ -2244,11 +2250,11 @@ function buildDueTag(dateStr){
   const dp=dueDate.split('-');
   const dateLabel=parseInt(dp[2])+' '+months[parseInt(dp[1])-1];
   if(diff<0) return `<span class="due-tag due-over">⚠ OVERDUE · ${dateLabel}</span>`;
-  if(diff===0) return `<span class="due-tag due-today">⚡ TODAY · ${dateLabel}</span>`;
-  if(diff===1) return `<span class="due-tag due-close">📅 TOMORROW · ${dateLabel}</span>`;
-  if(diff<=2) return `<span class="due-tag due-close">📅 ${diff}D · ${dateLabel}</span>`;
-  if(diff<=7) return `<span class="due-tag due-week">📅 ${diff}D · ${dateLabel}</span>`;
-  return `<span class="due-tag due-far">📅 ${dateLabel}</span>`;
+  if(diff===0) return `<span class="due-tag due-today">⚡ DUE TODAY · ${dateLabel}</span>`;
+  if(diff===1) return `<span class="due-tag due-close">📅 1 DAY · ${dateLabel}</span>`;
+  if(diff<=7) return `<span class="due-tag due-close">📅 ${diff} DAYS · ${dateLabel}</span>`;
+  if(diff<=14) return `<span class="due-tag due-week">📅 ${diff} DAYS · ${dateLabel}</span>`;
+  return `<span class="due-tag due-far">📅 ${diff} DAYS · ${dateLabel}</span>`;
 }
 
 function openDuePicker(id, type, event, sid){
