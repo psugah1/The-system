@@ -1414,23 +1414,12 @@ function scrollToSubtask(parentQid, sid){
 
 // ─── BOSS SKULL ───
 function updateBossSkull(){
+  // Only count boss tasks on TODAY - locked copies on other days are the same task
   const day=getDay(S.currentDate);
-  let bossCount=0;
-  day.quests.forEach(q=>{
-    if(q.pri==='boss'&&!q.completed) bossCount++;
-    (q.subtasks||[]).forEach(s=>{if(s.pri==='boss'&&!s.done)bossCount++;});
-  });
-  // check all days for boss tasks
   let totalBoss=0;
-  const _seenB=new Set();
-  Object.values(dayData).forEach(d=>{
-    (d.quests||[]).forEach(q=>{
-      const _bkey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
-      if(q.pri==='boss'&&!q.completed&&!_seenB.has(_bkey)){
-        _seenB.add(_bkey);
-        totalBoss++;
-      }
-    });
+  day.quests.forEach(q=>{
+    if(q.pri==='boss'&&!q.completed) totalBoss++;
+    (q.subtasks||[]).forEach(s=>{if(s.pri==='boss'&&!s.done)totalBoss++;});
   });
   const skull=document.getElementById('bossSkull');
   const cnt=document.getElementById('bossSkullCount');
@@ -2432,9 +2421,18 @@ function nestQuestIntoTask(draggedId, targetId, soloOnly){
   if(!target.subtasks)target.subtasks=[];
   target.subtasks.push(newSub);
 
-  // Remove dragged quest from day
+  // Remove dragged quest from today
   day.quests=day.quests.filter(q=>String(q.id)!==String(draggedId));
   day.order=(day.order||[]).filter(id=>String(id)!==String(draggedId));
+  // Also remove any locked copies of this task from other days (same text+cat)
+  const _nestKey=(dragged.originalId)||((dragged.text||'')+'|'+(dragged.cat||''));
+  Object.values(dayData).forEach(d=>{
+    if(d===day) return;
+    d.quests=(d.quests||[]).filter(dq=>{
+      const _dqKey=(dq.originalId)||((dq.text||'')+'|'+(dq.cat||''));
+      return _dqKey!==_nestKey;
+    });
+  });
 
   // Auto-open subtasks on target
   S.subShowing[targetId]=true;
