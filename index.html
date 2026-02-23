@@ -521,7 +521,10 @@ body::after{
 .cd.other{color:var(--dim);opacity:.4}
 .cd.future-date{opacity:.5}
 .close-md{background:none;border:1px solid var(--border);color:var(--dim);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;padding:10px;border-radius:3px;cursor:pointer;width:100%;margin-top:14px;text-align:center}
-.cl-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2)}
+.cl-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);cursor:default;user-select:none}
+.cl-drag{color:var(--dim);cursor:grab;font-size:14px;padding:0 4px;flex-shrink:0}
+.cl-drag:active{cursor:grabbing}
+.cl-item.drag-over{border-top:2px solid var(--accent)}
 .cl-swatch{width:12px;height:12px;border-radius:50%;flex-shrink:0}
 .cl-name{flex:1;font-size:15px;font-weight:600}
 .cl-name-inp{flex:1;font-size:14px;font-weight:600;background:transparent;border:none;border-bottom:1px solid rgba(0,180,255,.3);outline:none;padding:2px 0;color:var(--text);width:100%;min-width:0}
@@ -3039,6 +3042,81 @@ function saveOrderFromDOM(cat){
 function toggleSec(hdr){hdr.closest('.cat-sec').classList.toggle('collapsed')}
 
 // ─── CATEGORIES ───
+let catDragState=null;
+function setupCatDrag(row){
+  const handle=row.querySelector('.cl-drag');
+  if(!handle)return;
+
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    catDragState={dragging:row,startY:e.clientY};
+    row.style.opacity='0.5';
+    document.addEventListener('mousemove',onCatMove);
+    document.addEventListener('mouseup',onCatUp);
+  });
+  handle.addEventListener('touchstart',e=>{
+    const t=e.touches[0];
+    catDragState={dragging:row,startY:t.clientY};
+    row.style.opacity='0.5';
+    document.addEventListener('touchmove',onCatTouchMove,{passive:false});
+    document.addEventListener('touchend',onCatUp);
+  },{passive:true});
+}
+
+function onCatMove(e){ moveCatDrag(e.clientY); }
+function onCatTouchMove(e){ e.preventDefault(); moveCatDrag(e.touches[0].clientY); }
+
+function moveCatDrag(clientY){
+  if(!catDragState)return;
+  const list=document.getElementById('catList');
+  const rows=[...list.querySelectorAll('.cl-item')];
+  rows.forEach(r=>r.classList.remove('drag-over'));
+  // Find which row we're hovering
+  for(const r of rows){
+    if(r===catDragState.dragging)continue;
+    const rect=r.getBoundingClientRect();
+    if(clientY<rect.top+rect.height/2){
+      r.classList.add('drag-over');
+      break;
+    }
+  }
+}
+
+function onCatUp(){
+  if(!catDragState)return;
+  const list=document.getElementById('catList');
+  const rows=[...list.querySelectorAll('.cl-item')];
+  const overRow=rows.find(r=>r.classList.contains('drag-over'));
+  rows.forEach(r=>r.classList.remove('drag-over'));
+  catDragState.dragging.style.opacity='';
+
+  if(overRow){
+    const fromCat=catDragState.dragging.dataset.cat;
+    const toCat=overRow.dataset.cat;
+    const fromIdx=S.cats.indexOf(fromCat);
+    const toIdx=S.cats.indexOf(toCat);
+    if(fromIdx!==-1&&toIdx!==-1&&fromIdx!==toIdx){
+      pushUndo();
+      S.cats.splice(fromIdx,1);
+      S.cats.splice(toIdx,0,fromCat);
+      saveCfg();
+      renderCatModal();
+      showNotif('CATEGORY ORDER SAVED');
+    }
+  }
+
+  catDragState=null;
+  document.removeEventListener('mousemove',onCatMove);
+  document.removeEventListener('mouseup',onCatUp);
+  document.removeEventListener('touchmove',onCatTouchMove);
+  document.removeEventListener('touchend',onCatUp);
+}
+
+function saveCfg(){
+  localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors}));
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
+}
+
 function openCatModal(){renderCatModal();document.getElementById('catMo').classList.add('open')}
 function renderCatModal(){
   const list=document.getElementById('catList');
@@ -3047,7 +3125,9 @@ function renderCatModal(){
     const color=S.catColors[cat]||'#00d4ff';
     const row=document.createElement('div');
     row.className='cl-item';
-    row.innerHTML=`<div class="cl-swatch" style="background:${color}" onclick="pickCatColor('${esc(cat)}')"></div><input class="cl-name-inp" value="${cat}" data-orig="${cat}" onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
+    row.dataset.cat=cat;
+    row.innerHTML=`<div class="cl-drag" title="Drag to reorder">⋮⋮</div><div class="cl-swatch" style="background:${color}" onclick="pickCatColor('${esc(cat)}')"></div><input class="cl-name-inp" value="${cat}" data-orig="${cat}" onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
+    setupCatDrag(row);
     list.appendChild(row);
   });
   const cp=document.getElementById('cpRow');
