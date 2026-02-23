@@ -2258,13 +2258,12 @@ function setPayStatus(id, type, status, qid, sid){
 
 function buildDueTag(dateStr){
   if(!dateStr) return '';
-  const now = new Date();
-  const todayDate = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  // Count from viewed day (S.currentDate) not real today - so browsing forward/back shows correct countdown
+  const viewDate = (S && S.currentDate) ? S.currentDate : todayStr();
   const dueDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
-  const todayMs = new Date(todayDate+'T00:00:00').getTime();
+  const viewMs = new Date(viewDate+'T00:00:00').getTime();
   const dueMs = new Date(dueDate+'T00:00:00').getTime();
-  const diff = Math.round((dueMs - todayMs)/(1000*60*60*24));
-  // Format date as "23 FEB"
+  const diff = Math.round((dueMs - viewMs)/(1000*60*60*24));
   const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const dp=dueDate.split('-');
   const dateLabel=parseInt(dp[2])+' '+months[parseInt(dp[1])-1];
