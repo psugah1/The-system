@@ -1614,12 +1614,12 @@ function carryLockedQuests(fromDate, toDate){
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
         // subsubs: filter out done ones (unless recurring), keep existing tick state if present
         const buildSubsubs=(srcSubs, existingSubs)=>{
-          // Always carry ALL subsubs - reset done to false each day
+          // Carry ALL subsubs, preserve their done state
           return (srcSubs||[]).map(x=>{
             const ex=(existingSubs||[]).find(e=>e.text===x.text);
             return ex
-              ? {...ex, pri:x.pri, done:false}
-              : {...x, id:uid(), done:false};
+              ? {...ex, pri:x.pri, recurring:x.recurring, done:ex.done}
+              : {...x, id:uid(), done:x.done};
           });
         };
         if(existing){
@@ -1656,7 +1656,7 @@ function carryLockedQuests(fromDate, toDate){
           done:s.recurring?false:s.done,
           subsubs:(s.subsubs||[]).map(x=>({
             ...x, id:uid(),
-            done:false,
+            done:x.done,
             dueDate:x.dueDate||null,
             payStatus:x.payStatus||null
           }))
