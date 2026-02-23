@@ -1563,7 +1563,21 @@ function shiftDay(delta){
 function carryLockedQuests(fromDate, toDate){
   const src=dayData[fromDate];
   if(!src)return;
-  const locked=src.quests.filter(q=>q.locked);
+  // Build tombstone sets from today's data (deleted or unlocked tasks stop carrying)
+  // Walk from toDate backwards through all days to collect tombstones
+  const deletedKeys=new Set();
+  const unlockedKeys=new Set();
+  Object.entries(dayData).forEach(([ds,d])=>{
+    (d.deleted||[]).forEach(k=>deletedKeys.add(k));
+    (d.unlocked||[]).forEach(k=>unlockedKeys.add(k));
+  });
+  const locked=src.quests.filter(q=>{
+    if(!q.locked) return false;
+    const key=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
+    if(deletedKeys.has(key)) return false;  // was deleted, don't carry
+    if(unlockedKeys.has(key)) return false; // was unlocked, don't carry
+    return true;
+  });
   if(!locked.length)return;
 
   if(!dayData[toDate])dayData[toDate]={quests:[],order:[]};
@@ -1810,6 +1824,15 @@ function saveEdit(id){
 function delQ(id){
   pushUndo();
   const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(id));
+  if(!q)return;
+  // Store a tombstone so carry-forward knows this was intentionally deleted
+  const delKey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
+  if(!dayData[S.currentDate].deleted) dayData[S.currentDate].deleted=[];
+  if(!dayData[S.currentDate].deleted.includes(delKey)){
+    dayData[S.currentDate].deleted.push(delKey);
+  }
+  // Remove from today only - history on other days is preserved
   day.quests=day.quests.filter(q=>String(q.id)!==String(id));
   day.order=(day.order||[]).filter(oid=>String(oid)!==String(id));
   S.editing=null;saveAll();render();
@@ -1821,14 +1844,17 @@ function toggleLock(id){
   const q=day.quests.find(q=>String(q.id)===String(id));
   if(!q)return;
   q.locked=!q.locked;
-  saveAll();
-  // just update the button in place, no full re-render
-  const btn=document.querySelector(`.qi-row[data-id="${id}"] .qbtn-lock`);
-  if(btn){
-    btn.classList.toggle('locked',q.locked);
-    btn.textContent=q.locked?'🔒':'🔓';
-    btn.title=q.locked?'Locked - carries to next day':'Unlocked - tap to lock';
+  // When unlocking, store tombstone so carry-forward stops propagating this task
+  if(!q.locked){
+    const unlockKey=(q.originalId)||((q.text||'')+'|'+(q.cat||''));
+    if(!dayData[S.currentDate].unlocked) dayData[S.currentDate].unlocked=[];
+    if(!dayData[S.currentDate].unlocked.includes(unlockKey)){
+      dayData[S.currentDate].unlocked.push(unlockKey);
+    }
   }
+  saveAll();
+  const wrap=document.querySelector(`.q-wrap[data-id="${id}"]`);
+  if(wrap){const oldRow=wrap.querySelector('.qi-row');if(oldRow){const newRow=buildQuestRow(q);wrap.replaceChild(newRow,oldRow);setupDragHandle(newRow,q);}}
   showNotif(q.locked?'🔒 LOCKED — CARRIES FORWARD':'🔓 UNLOCKED');
 }
 
@@ -2262,6 +2288,34 @@ function setDueDate(qid, dateVal){
       wrap.replaceChild(newRow,oldRow);
     }
   }
+}
+
+function runOneTimeCleanup(){
+  // One-time: remove all standalone tasks in 3D CARVING except "Current Jobs"
+  // These were tasks that got dragged into Current Jobs as subtasks but old locked copies persisted
+  const CLEANUP_KEY = 'sl3_cleanup_3dcarving_v1';
+  if(localStorage.getItem(CLEANUP_KEY)) return; // already ran
+
+  let changed = false;
+  Object.entries(dayData).forEach(([ds, d]) => {
+    if(!d.quests) return;
+    const before = d.quests.length;
+    d.quests = d.quests.filter(q => {
+      // Keep if not in 3D CARVING
+      if((q.cat||'').toUpperCase() !== '3D CARVING') return true;
+      // Keep "Current Jobs" (and any variant spelling)
+      if((q.text||'').toUpperCase().includes('CURRENT JOB')) return true;
+      // Delete everything else in 3D CARVING
+      return false;
+    });
+    if(d.quests.length !== before) changed = true;
+  });
+
+  if(changed){
+    saveAll();
+    console.log('Cleanup: removed old standalone 3D CARVING tasks');
+  }
+  localStorage.setItem(CLEANUP_KEY, '1');
 }
 
 function toggleSubRecur(qid,sid){
@@ -3379,6 +3433,7 @@ async function initApp(){
     getDay(S.currentDate);
     render();
     fbLoaded = true; // NOW safe to save
+    runOneTimeCleanup();
     showNotif('SYSTEM ONLINE ✓');
   } catch(e){
     console.warn('Firebase init error:', e);
