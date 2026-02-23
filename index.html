@@ -1831,12 +1831,9 @@ function buildNoteRow(q){
       <span class="note-icon">📝</span>
       <textarea class="note-textarea" placeholder="Type your note..." onInput="autoResizeNote(this);saveNoteText('${q.id}',this.value)" onblur="saveNoteText('${q.id}',this.value)">${esc(q.text||'')}</textarea>
     </div>
-    <div class="note-acts">
-      <div class="qacts-overflow" id="qo-${q.id}">
-        <button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>
-        <button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>
-      </div>
-      <button class="qbtn qbtn-more ${q.locked?'locked':''}" onclick="toggleQActsMenu('${q.id}',this)">•••</button>
+    <div class="qacts" style="flex-shrink:0">
+      <button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>
+      <button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>
     </div>
   `;
   // Auto-resize textarea after render
