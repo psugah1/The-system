@@ -2375,10 +2375,17 @@ function openPayPicker(id, type, event, qid, sid, xid){
   const modal=document.createElement('div');
   modal.id='payPicker';
   modal.className='pay-picker';
-  const btn=event.currentTarget;
-  const rect=btn.getBoundingClientRect();
-  modal.style.top=(rect.bottom+6)+'px';
-  modal.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
+  const btn=event.target||event.currentTarget;
+  try{
+    const rect=btn.getBoundingClientRect();
+    const top=Math.min(rect.bottom+6, window.innerHeight-160);
+    const left=Math.min(Math.max(rect.left,4), window.innerWidth-184);
+    modal.style.top=top+'px';
+    modal.style.left=left+'px';
+  }catch(e){
+    modal.style.top='50%';modal.style.left='50%';
+    modal.style.transform='translate(-50%,-50%)';
+  }
   modal.innerHTML=`
     <div class="pay-option pay-option-full" onclick="setPayStatus('${id}','${type}','full','${qid||''}','${sid||''}','${xid||''}')">💰 PAID IN FULL</div>
     <div class="pay-option pay-option-deposit" onclick="setPayStatus('${id}','${type}','deposit','${qid||''}','${sid||''}','${xid||''}')">💵 50% DEPOSIT</div>
@@ -2443,7 +2450,7 @@ function buildDueTag(dateStr){
   return `<span class="due-tag due-far">📅 ${diff} DAYS · ${dateLabel}</span>`;
 }
 
-function openDuePicker(id, type, event, sid){
+function openDuePicker(id, type, event, sid, xid){
   event.stopPropagation();
   // Remove any existing picker
   const existing=document.getElementById('duePicker');
@@ -2476,14 +2483,25 @@ function openDuePicker(id, type, event, sid){
   modal.id='duePicker';
   modal.className='due-picker-modal';
 
-  // Position near the button
-  const btn=event.currentTarget;
-  const rect=btn.getBoundingClientRect();
-  modal.style.top=(rect.bottom+6)+'px';
-  modal.style.left=Math.min(rect.left, window.innerWidth-240)+'px';
+  // Position near the button (use target as fallback since currentTarget can be null in inline handlers)
+  const btn=event.target||event.currentTarget;
+  try{
+    const rect=btn.getBoundingClientRect();
+    const top=Math.min(rect.bottom+6, window.innerHeight-200);
+    const left=Math.min(Math.max(rect.left,4), window.innerWidth-244);
+    modal.style.top=top+'px';
+    modal.style.left=left+'px';
+  }catch(e){
+    modal.style.top='50%';modal.style.left='50%';
+    modal.style.transform='translate(-50%,-50%)';
+  }
 
   modal.innerHTML=`
-    <label>DUE DATE</label>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:rgba(0,180,255,.7)">SET DUE DATE</span>
+      <button onclick="document.getElementById('duePicker').remove()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:14px;line-height:1;padding:0 2px">✕</button>
+    </div>
+    <label>DATE</label>
     <input type="date" id="dpDate" value="${currentDate}">
     <label>TIME (OPTIONAL)</label>
     <input type="time" id="dpTime" value="${currentTime}">
@@ -2494,16 +2512,21 @@ function openDuePicker(id, type, event, sid){
   `;
 
   document.body.appendChild(modal);
+  // Focus the date input after a short delay
+  setTimeout(()=>{ document.getElementById('dpDate')?.focus(); }, 50);
 
   // Close on outside click
   setTimeout(()=>{
-    document.addEventListener('mousedown', function closePicker(e){
+    function closePicker(e){
       if(!e.target.closest('#duePicker')){
-        modal.remove();
-        document.removeEventListener('mousedown', closePicker);
+        document.getElementById('duePicker')?.remove();
+        document.removeEventListener('click', closePicker);
+        document.removeEventListener('touchend', closePicker);
       }
-    });
-  }, 50);
+    }
+    document.addEventListener('click', closePicker);
+    document.addEventListener('touchend', closePicker);
+  }, 150);
 }
 
 function saveDuePicker(id, type, sid, xid){
@@ -2562,6 +2585,7 @@ function setDueDate(qid, dateVal){
     if(oldRow){
       const newRow=buildQuestRow(q);
       wrap.replaceChild(newRow,oldRow);
+      setupDragHandle(newRow,q);
     }
   }
 }
