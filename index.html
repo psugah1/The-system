@@ -1609,36 +1609,49 @@ function carryLockedQuests(fromDate, toDate){
       // This prevents app-open carry from wiping values set today
       if(!already.dueDate && srcQ.dueDate) already.dueDate=srcQ.dueDate;
       if(!already.payStatus && srcQ.payStatus) already.payStatus=srcQ.payStatus;
-      // Sync subtasks - drop done one-time subs, reset recurring, preserve today's values
-      already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
-        const existing=(already.subtasks||[]).find(es=>es.text===s.text);
-        // subsubs: filter out done ones (unless recurring), keep existing tick state if present
-        const buildSubsubs=(srcSubs, existingSubs)=>{
-          // Carry ALL subsubs, preserve their done state
-          return (srcSubs||[]).map(x=>{
-            const ex=(existingSubs||[]).find(e=>e.text===x.text);
-            return ex
-              ? {...ex, pri:x.pri, recurring:x.recurring, done:ex.done}
-              : {...x, id:uid(), done:x.done};
+      // Sync subtasks: today's copy is source of truth for done state and new items
+      // Step 1: start with today's existing subtasks (preserves ticks, new items added today)
+      // Step 2: update metadata (pri, dueDate, payStatus) from source
+      // Step 3: add any subtasks from source that don't exist in today yet
+      const todaySubs = already.subtasks || [];
+
+      // Update existing today subtasks with fresh metadata from source
+      todaySubs.forEach(ts=>{
+        const srcS=(srcQ.subtasks||[]).find(ss=>ss.text===ts.text);
+        if(srcS){
+          ts.pri=srcS.pri;
+          ts.recurring=srcS.recurring;
+          if(!ts.dueDate && srcS.dueDate) ts.dueDate=srcS.dueDate;
+          if(!ts.payStatus && srcS.payStatus) ts.payStatus=srcS.payStatus;
+          // Update subsubs metadata from source, preserve today's done states and new items
+          const todaySS=ts.subsubs||[];
+          todaySS.forEach(tx=>{
+            const srcX=(srcS.subsubs||[]).find(sx=>sx.text===tx.text);
+            if(srcX){ tx.pri=srcX.pri; }
           });
-        };
-        if(existing){
-          return {
-            ...existing,
-            recurring:s.recurring,
-            pri:s.pri,
-            dueDate: existing.dueDate || s.dueDate || null,
-            payStatus: existing.payStatus || s.payStatus || null,
-            done: s.recurring ? false : existing.done,
-            subsubs: buildSubsubs(s.subsubs, existing.subsubs)
-          };
+          // Add subsubs from source that aren't in today yet
+          (srcS.subsubs||[]).forEach(sx=>{
+            if(!todaySS.find(tx=>tx.text===sx.text)){
+              todaySS.push({...sx, id:uid()});
+            }
+          });
+          ts.subsubs=todaySS;
         }
-        return {
-          ...s, id:uid(),
-          done: s.recurring?false:s.done,
-          subsubs: buildSubsubs(s.subsubs, [])
-        };
       });
+
+      // Add subtasks from source that don't exist in today yet
+      (srcQ.subtasks||[]).forEach(srcS=>{
+        if(!todaySubs.find(ts=>ts.text===srcS.text)){
+          todaySubs.push({
+            ...srcS, id:uid(),
+            done:srcS.recurring?false:srcS.done,
+            subsubs:(srcS.subsubs||[]).map(x=>({...x,id:uid()}))
+          });
+        }
+      });
+
+      // Drop done non-recurring subtasks (they were completed, shouldn't reappear)
+      already.subtasks=todaySubs.filter(ts=>ts.recurring||!ts.done);
     } else {
       const newQ={
         ...srcQ,
