@@ -523,6 +523,8 @@ body::after{
 .cd.future-date{opacity:.5}
 .close-md{background:none;border:1px solid var(--border);color:var(--dim);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;padding:10px;border-radius:3px;cursor:pointer;width:100%;margin-top:14px;text-align:center}
 .cl-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);cursor:default;user-select:none}
+.cl-carry-btn{background:none;border:1px solid rgba(0,180,255,.25);color:var(--dim);font-size:9px;padding:3px 7px;border-radius:3px;cursor:pointer;font-family:'Orbitron',monospace;letter-spacing:1px;white-space:nowrap;transition:all .2s}
+.cl-carry-btn.persist{border-color:rgba(0,255,136,.5);color:#00ff99;background:rgba(0,255,136,.08)}
 .cl-drag{color:var(--dim);cursor:grab;font-size:14px;padding:0 4px;flex-shrink:0}
 .cl-drag:active{cursor:grabbing}
 .cl-item.drag-over{border-top:2px solid var(--accent)}
@@ -697,6 +699,7 @@ let S={
   editingSub:null,
   editingSubSub:null,
   ssShowing:{},
+  catCarryMode:{},
   inlineAdding:{},
   newPri:{},
   calMonth:null,
@@ -793,7 +796,7 @@ function saveAll(){
   localStorage.setItem('sl3_days',JSON.stringify(dayData));
   localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors}));
   fbSave('data','days',dayData);
-  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode});
 }
 
 function saveUI(){
@@ -806,6 +809,7 @@ function loadCfg(){
   const c=JSON.parse(localStorage.getItem('sl3_cfg')||'{}');
   if(c.cats)S.cats=c.cats;
   if(c.catColors)S.catColors={...DEFAULT_COLORS,...c.catColors};
+  if(c.catCarryMode)S.catCarryMode=c.catCarryMode;
   if(!S.newTopCat)S.newTopCat=S.cats[0]||'DAILY';
   S.cats.forEach(c=>{if(!S.newPri[c])S.newPri[c]='normal'});
   // Restore subtask open/collapse state
@@ -1570,15 +1574,17 @@ function shiftDay(delta){
 
   // When going forward, sync locked quests from the source day into target day
   if(delta>0){
-    carryLockedQuests(fromDate, S.currentDate);
+    carryLockedQuests(fromDate, S.currentDate, true);
   }
 
   render();
 }
 
-function carryLockedQuests(fromDate, toDate){
+function carryLockedQuests(fromDate, toDate, syncDone){
   const src=dayData[fromDate];
   if(!src)return;
+  // Helper: should done state persist for this category?
+  const persistDone=(cat)=>(S.catCarryMode[cat]||'reset')==='persist';
   // Build tombstone sets from today's data (deleted or unlocked tasks stop carrying)
   // Walk from toDate backwards through all days to collect tombstones
   const deletedKeys=new Set();
@@ -1615,21 +1621,27 @@ function carryLockedQuests(fromDate, toDate){
       // Step 3: add any subtasks from source that don't exist in today yet
       const todaySubs = already.subtasks || [];
 
-      // Update existing today subtasks with fresh metadata from source
+      // Update existing subtasks from source - source has authoritative done/metadata state
       todaySubs.forEach(ts=>{
         const srcS=(srcQ.subtasks||[]).find(ss=>ss.text===ts.text);
         if(srcS){
           ts.pri=srcS.pri;
           ts.recurring=srcS.recurring;
+          // Source done state is authoritative (user ticked it on source day)
+          if(syncDone || persistDone(srcQ.cat)) ts.done = srcS.recurring ? false : srcS.done;
           if(!ts.dueDate && srcS.dueDate) ts.dueDate=srcS.dueDate;
           if(!ts.payStatus && srcS.payStatus) ts.payStatus=srcS.payStatus;
-          // Update subsubs metadata from source, preserve today's done states and new items
+          // Update subsubs from source
           const todaySS=ts.subsubs||[];
           todaySS.forEach(tx=>{
             const srcX=(srcS.subsubs||[]).find(sx=>sx.text===tx.text);
-            if(srcX){ tx.pri=srcX.pri; }
+            if(srcX){
+              tx.pri=srcX.pri;
+              // Source done state is authoritative for subsubs too
+              if(syncDone || persistDone(srcQ.cat)) tx.done = srcX.recurring ? false : srcX.done;
+            }
           });
-          // Add subsubs from source that aren't in today yet
+          // Add subsubs from source that aren't in dest yet
           (srcS.subsubs||[]).forEach(sx=>{
             if(!todaySS.find(tx=>tx.text===sx.text)){
               todaySS.push({...sx, id:uid()});
@@ -1650,8 +1662,12 @@ function carryLockedQuests(fromDate, toDate){
         }
       });
 
-      // Drop done non-recurring subtasks (they were completed, shouldn't reappear)
-      already.subtasks=todaySubs.filter(ts=>ts.recurring||!ts.done);
+      // Reset recurring subtasks to undone, keep all others as-is (ticked stays ticked)
+      todaySubs.forEach(ts=>{
+        if(ts.recurring) ts.done=false;
+        (ts.subsubs||[]).forEach(tx=>{ if(tx.recurring) tx.done=false; });
+      });
+      already.subtasks=todaySubs;
     } else {
       const newQ={
         ...srcQ,
@@ -1661,7 +1677,7 @@ function carryLockedQuests(fromDate, toDate){
         locked:true,
         dueDate:srcQ.dueDate||null,
         payStatus:srcQ.payStatus||null,
-        subtasks:(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>({
+        subtasks:(srcQ.subtasks||[]).map(s=>({
           ...s,
           id:uid(),
           dueDate:s.dueDate||null,
@@ -3197,8 +3213,15 @@ function onCatUp(){
 }
 
 function saveCfg(){
-  localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors}));
-  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors});
+  localStorage.setItem('sl3_cfg',JSON.stringify({cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode}));
+  fbSave('data','cfg',{cats:S.cats,catColors:S.catColors,catCarryMode:S.catCarryMode});
+}
+
+function toggleCatCarryMode(cat){
+  const current=S.catCarryMode[cat]||'reset';
+  S.catCarryMode[cat]=current==='reset'?'persist':'reset';
+  saveCfg();
+  renderCatModal();
 }
 
 function openCatModal(){renderCatModal();document.getElementById('catMo').classList.add('open')}
@@ -3210,7 +3233,8 @@ function renderCatModal(){
     const row=document.createElement('div');
     row.className='cl-item';
     row.dataset.cat=cat;
-    row.innerHTML=`<div class="cl-drag" title="Drag to reorder">⋮⋮</div><div class="cl-swatch" style="background:${color}" onclick="pickCatColor('${esc(cat)}')"></div><input class="cl-name-inp" value="${cat}" data-orig="${cat}" onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
+    const _mode=S.catCarryMode[cat]||'reset';
+    row.innerHTML=`<div class="cl-drag" title="Drag to reorder">⋮⋮</div><div class="cl-swatch" style="background:${color}" onclick="pickCatColor('${esc(cat)}')"></div><input class="cl-name-inp" value="${cat}" data-orig="${cat}" onblur="renameCat(this)" onkeydown="if(event.key==='Enter')this.blur()"/><button class="cl-carry-btn ${_mode==='persist'?'persist':''}" onclick="toggleCatCarryMode('${esc(cat)}')" title="${_mode==='persist'?'PERSIST: ticks carry forward':'RESET: ticks clear each day'}">${_mode==='persist'?'📋 PERSIST':'🔄 RESET'}</button><button class="cl-rem" onclick="removeCat('${esc(cat)}')">✕</button>`;
     setupCatDrag(row);
     list.appendChild(row);
   });
@@ -3670,7 +3694,7 @@ async function initApp(){
     S.currentDate = todayStr(); // always snap to today on open
     const _prev = new Date(); _prev.setDate(_prev.getDate()-1);
     const _prevStr = _prev.getFullYear()+'-'+String(_prev.getMonth()+1).padStart(2,'0')+'-'+String(_prev.getDate()).padStart(2,'0');
-    carryLockedQuests(_prevStr, S.currentDate);
+    carryLockedQuests(_prevStr, S.currentDate, false);
     getDay(S.currentDate);
     render();
     fbLoaded = true; // NOW safe to save
