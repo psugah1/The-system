@@ -1602,17 +1602,31 @@ function carryLockedQuests(fromDate, toDate){
   locked.forEach(srcQ=>{
     const already=dest.quests.find(dq=>dq.locked&&dq.text===srcQ.text&&dq.cat===srcQ.cat);
     if(already){
-      // Sync all mutable fields from source
+      // Sync priority from source (always trust source priority)
       already.pri=srcQ.pri;
-      already.dueDate=srcQ.dueDate||null;
-      already.payStatus=srcQ.payStatus||null;
-      // Sync subtasks
+      // Only copy dueDate/payStatus from source if today's copy doesn't already have them
+      // This prevents app-open carry from wiping values set today
+      if(!already.dueDate && srcQ.dueDate) already.dueDate=srcQ.dueDate;
+      if(!already.payStatus && srcQ.payStatus) already.payStatus=srcQ.payStatus;
+      // Sync subtasks - preserve today's dueDate/payStatus on existing subs
       already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
-        const subsubs=(s.subsubs||[]).map(x=>({...x,id:uid(),dueDate:x.dueDate||null,payStatus:x.payStatus||null}));
-        return existing
-          ? {...existing, recurring:s.recurring, pri:s.pri, dueDate:s.dueDate||null, payStatus:s.payStatus||null, subsubs}
-          : {...s, id:uid(), done:s.recurring?false:s.done, subsubs};
+        const subsubs=(s.subsubs||[]).map(x=>({...x,id:uid(),
+          dueDate:x.dueDate||null,
+          payStatus:x.payStatus||null
+        }));
+        if(existing){
+          return {
+            ...existing,
+            recurring:s.recurring,
+            pri:s.pri,
+            // only carry src value if today's doesn't have one
+            dueDate: existing.dueDate || s.dueDate || null,
+            payStatus: existing.payStatus || s.payStatus || null,
+            subsubs: existing.subsubs&&existing.subsubs.length ? existing.subsubs : subsubs
+          };
+        }
+        return {...s, id:uid(), done:s.recurring?false:s.done, subsubs};
       });
     } else {
       const newQ={
