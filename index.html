@@ -1829,9 +1829,10 @@ function buildNoteRow(q){
     <div class="dh" data-dh="${q.id}" title="Drag">⋮⋮</div>
     <div class="note-body">
       <span class="note-icon">📝</span>
-      <textarea class="note-textarea" placeholder="Type your note..." onInput="autoResizeNote(this);saveNoteText('${q.id}',this.value)" onblur="saveNoteText('${q.id}',this.value)">${esc(q.text||'')}</textarea>
+      <textarea class="note-textarea" id="nt-${q.id}" placeholder="Type your note..." onInput="autoResizeNote(this);markNoteUnsaved('${q.id}')" onblur="saveNoteText('${q.id}',this.value)">${esc(q.text||'')}</textarea>
     </div>
     <div class="qacts" style="flex-shrink:0">
+      <button class="qbtn note-save-btn" id="nsb-${q.id}" onclick="saveNoteBtn('${q.id}')" title="Save note" style="color:var(--dim);border-color:rgba(0,255,136,.15);font-size:11px">✓</button>
       <button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>
       <button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>
     </div>
@@ -1855,6 +1856,39 @@ function saveNoteText(id, text){
   if(!q)return;
   q.text=text;
   saveAll();
+  // Flash tick green to confirm saved
+  const btn=document.getElementById('nsb-'+id);
+  if(btn){
+    btn.style.color='#00ff99';
+    btn.style.borderColor='rgba(0,255,136,.6)';
+    btn.style.background='rgba(0,255,136,.1)';
+    setTimeout(()=>{
+      btn.style.color='var(--dim)';
+      btn.style.borderColor='rgba(0,255,136,.15)';
+      btn.style.background='transparent';
+    },1500);
+  }
+}
+
+function saveNoteBtn(id){
+  const ta=document.getElementById('nt-'+id);
+  if(ta) saveNoteText(id, ta.value);
+}
+
+function markNoteUnsaved(id){
+  // Show tick as amber "unsaved" while typing
+  const btn=document.getElementById('nsb-'+id);
+  if(btn){
+    btn.style.color='#ffaa00';
+    btn.style.borderColor='rgba(255,170,0,.4)';
+    btn.style.background='transparent';
+  }
+  // Also auto-save via debounce
+  clearTimeout(window._noteSaveTimer);
+  window._noteSaveTimer=setTimeout(()=>{
+    const ta=document.getElementById('nt-'+id);
+    if(ta) saveNoteText(id, ta.value);
+  }, 800);
 }
 
 function addNoteCat(cat){
