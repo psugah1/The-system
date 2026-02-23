@@ -470,6 +470,14 @@ body::after{
 
 /* ── COLLAPSE ALL BTN ── */
 .collapse-all-btn{display:block;width:100%;margin-top:8px;padding:7px;background:transparent;border:1px solid rgba(0,180,255,.15);border-radius:4px;color:rgba(0,180,255,.4);font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-align:center}
+.qi-row.note-row{border-color:rgba(255,200,0,.35);background:rgba(255,200,0,.04);min-height:auto}
+.note-body{display:flex;align-items:flex-start;gap:8px;width:100%;padding:2px 0}
+.note-icon{font-size:14px;flex-shrink:0;margin-top:2px;opacity:.7}
+.note-textarea{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;resize:none;line-height:1.5;min-height:36px;overflow:hidden}
+.note-textarea::placeholder{color:var(--dim)}
+.note-acts{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0}
+.cat-add-note{background:none;border:1px solid rgba(255,200,0,.3);color:rgba(255,200,0,.7);padding:3px 8px;border-radius:3px;cursor:pointer;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;transition:all .2s}
+.cat-add-note:active{background:rgba(255,200,0,.1)}
 .collapse-all-btn:hover{border-color:rgba(0,180,255,.4);color:rgba(0,180,255,.7)}
 
 /* ── SYSTEM TITLE BANNER ── */
@@ -909,8 +917,8 @@ function calcTotalXP(){
 function renderStats(){
   const day=getDay(S.currentDate);
   const qs=day.quests;
-  const active=qs.filter(q=>!q.completed).length;
-  const done=qs.filter(q=>q.completed).length;
+  const active=qs.filter(q=>!q.completed&&q.type!=='note').length;
+  const done=qs.filter(q=>q.completed&&q.type!=='note').length;
   // Count urgent tasks + urgent subtasks
   let urgent=0;
   qs.forEach(q=>{
@@ -919,7 +927,7 @@ function renderStats(){
       if(!s.done&&s.pri==='urgent') urgent++;
     });
   });
-  const total=qs.length;
+  const total=qs.filter(q=>q.type!=='note').length;
   const pct=total?Math.round(done/total*100):0;
   document.getElementById('sAct').textContent=active;
   document.getElementById('sDone').textContent=done;
@@ -980,7 +988,11 @@ function setPage(p){
 }
 
 // ─── MAIN RENDER ───
-function render(){renderStats();rebuildTabs();renderMain()}
+function resizeAllNotes(){
+  document.querySelectorAll('.note-textarea').forEach(ta=>autoResizeNote(ta));
+}
+
+function render(){renderStats();rebuildTabs();renderMain();setTimeout(resizeAllNotes,0);}
 
 function renderMain(){
   updateDateDisplay();
@@ -1158,6 +1170,7 @@ function buildCatAddRow(cat){
         <button class="cpbtn ${pri==='boss'?'sel-b':''}" onclick="setCatPri('${esc(cat)}','boss')">💀</button>
       </div>
       <button class="cat-add-btn" onclick="addQuestCat('${esc(cat)}')">+</button>
+      <button class="cat-add-note" onclick="addNoteCat('${esc(cat)}')" title="Add note">📝</button>
     </div>
   `;
   setTimeout(()=>{
@@ -1205,6 +1218,9 @@ function buildQuestWrap(q,cat){
 }
 
 function buildQuestRow(q){
+  // ── Note type: render as amber memo card ──
+  if(q.type==='note') return buildNoteRow(q);
+
   const pri=q.pri||'normal';
   const div=document.createElement('div');
   div.className=`qi-row ${pri==='normal'?'normal':'pri-'+pri} ${q.completed?'done':''}`;
@@ -1804,6 +1820,62 @@ function setCatPri(cat,pri){
   }
 }
 
+function buildNoteRow(q){
+  const div=document.createElement('div');
+  div.className='qi-row note-row';
+  div.dataset.id=q.id;
+  div.dataset.cat=q.cat;
+  div.innerHTML=`
+    <div class="dh" data-dh="${q.id}" title="Drag">⋮⋮</div>
+    <div class="note-body">
+      <span class="note-icon">📝</span>
+      <textarea class="note-textarea" placeholder="Type your note..." onInput="autoResizeNote(this);saveNoteText('${q.id}',this.value)" onblur="saveNoteText('${q.id}',this.value)">${esc(q.text||'')}</textarea>
+    </div>
+    <div class="note-acts">
+      <div class="qacts-overflow" id="qo-${q.id}">
+        <button class="qbtn qbtn-lock ${q.locked?'locked':''}" onclick="toggleLock('${q.id}')" title="${q.locked?'Locked - carries to next day':'Unlocked'}">${q.locked?'🔒':'🔓'}</button>
+        <button class="qbtn qbtn-del" onclick="delQ('${q.id}')">✕</button>
+      </div>
+      <button class="qbtn qbtn-more ${q.locked?'locked':''}" onclick="toggleQActsMenu('${q.id}',this)">•••</button>
+    </div>
+  `;
+  // Auto-resize textarea after render
+  setTimeout(()=>{
+    const ta=div.querySelector('.note-textarea');
+    if(ta) autoResizeNote(ta);
+  },0);
+  return div;
+}
+
+function autoResizeNote(ta){
+  ta.style.height='auto';
+  ta.style.height=ta.scrollHeight+'px';
+}
+
+function saveNoteText(id, text){
+  const day=getDay(S.currentDate);
+  const q=day.quests.find(q=>String(q.id)===String(id));
+  if(!q)return;
+  q.text=text;
+  saveAll();
+}
+
+function addNoteCat(cat){
+  pushUndo();
+  const day=getDay(S.currentDate);
+  const q={id:uid(),type:'note',text:'',cat,pri:'normal',completed:false,locked:false,subtasks:[],createdAt:new Date().toISOString()};
+  day.quests.push(q);
+  if(!day.order)day.order=[];
+  day.order.push(q.id);
+  saveAll();
+  render();
+  // Focus the new note textarea
+  setTimeout(()=>{
+    const wrap=document.querySelector(`.q-wrap[data-id="${q.id}"]`);
+    if(wrap){const ta=wrap.querySelector('.note-textarea');if(ta)ta.focus();}
+  },100);
+}
+
 function addQ(text,cat,pri,refocusId){
   pushUndo();
   const day=getDay(S.currentDate);
@@ -1813,6 +1885,8 @@ function addQ(text,cat,pri,refocusId){
   day.order.push(q.id);
   saveAll();
   render();
+  // Auto-resize any note textareas after render
+  resizeAllNotes();
   if(refocusId){
     const el=document.getElementById(refocusId);
     if(el){el.focus();el.value='';}
@@ -1823,6 +1897,8 @@ function addQ(text,cat,pri,refocusId){
 
 function toggleQ(id){
   const day=getDay(S.currentDate);
+  const _qCheck=day.quests.find(q=>String(q.id)===String(id));
+  if(_qCheck&&_qCheck.type==='note') return; // notes don't get ticked
   const q=day.quests.find(q=>String(q.id)===String(id));
   if(!q)return;
   pushUndo();
