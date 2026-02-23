@@ -1606,9 +1606,10 @@ function carryLockedQuests(fromDate, toDate){
       // Sync subtasks
       already.subtasks=(srcQ.subtasks||[]).filter(s=>s.recurring||!s.done).map(s=>{
         const existing=(already.subtasks||[]).find(es=>es.text===s.text);
+        const subsubs=(s.subsubs||[]).map(x=>({...x,id:uid(),dueDate:x.dueDate||null,payStatus:x.payStatus||null}));
         return existing
-          ? {...existing, recurring:s.recurring, pri:s.pri, dueDate:s.dueDate||null, payStatus:s.payStatus||null}
-          : {...s, id:uid(), done:s.recurring?false:s.done};
+          ? {...existing, recurring:s.recurring, pri:s.pri, dueDate:s.dueDate||null, payStatus:s.payStatus||null, subsubs}
+          : {...s, id:uid(), done:s.recurring?false:s.done, subsubs};
       });
     } else {
       const newQ={
@@ -1626,7 +1627,8 @@ function carryLockedQuests(fromDate, toDate){
           id:uid(),
           dueDate:s.dueDate||null,
           payStatus:s.payStatus||null,
-          done:s.recurring ? false : s.done
+          done:s.recurring ? false : s.done,
+          subsubs:(s.subsubs||[]).map(x=>({...x,id:uid(),dueDate:x.dueDate||null,payStatus:x.payStatus||null}))
         }))
       };
       dest.quests.push(newQ);
